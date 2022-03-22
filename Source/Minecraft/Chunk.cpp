@@ -2,6 +2,7 @@
 
 
 #include "Chunk.h"
+#include "SimplexNoise/SimplexNoiseBPLibrary.h"
 
 // Sets default values
 AChunk::AChunk() {
@@ -20,16 +21,39 @@ AChunk::AChunk() {
 void AChunk::BeginPlay() {
 	Super::BeginPlay();
 
-	for (int LoopX = 0; LoopX < NUM_X; LoopX++) {
-		for (int LoopY = 0; LoopY < NUM_Y; LoopY++) {
-			FTransform InstanceTransform;
+	FVector Location = GetActorLocation();
 
-			InstanceTransform.SetLocation(FVector(LoopX * VOXEL_SIZE, LoopY * VOXEL_SIZE, FMath::RandRange(-10, 10)));
-			InstanceTransform.SetScale3D(FVector(1.0f, 1.0f, 1.0f));
+	// float ActorX = Location.X / VOXEL_SIZE;
+	// float ActorY = Location.Y / VOXEL_SIZE;
 
-			ISMComp->AddInstance(InstanceTransform);
+	for (int LoopX = 0; LoopX < NUM; LoopX++) {
+		for (int LoopY = 0; LoopY < NUM; LoopY++) {
+			// for (int LoopZ = 0; LoopZ < DEPTH; LoopZ++) {
+				FTransform InstanceTransform;
+
+				// float NoiseDensity = 0.0005;
+				float NoiseDensity = 0.0002;
+				int NoiseScale = 6;
+
+				float X = LoopX * VOXEL_SIZE;
+				float Y = LoopY * VOXEL_SIZE;
+
+				float Z = (FMath::Floor(USimplexNoiseBPLibrary::SimplexNoise2D(X + Location.X, Y + Location.Y, NoiseDensity) * NoiseScale) ) * VOXEL_SIZE;
+				// Z -= VOXEL_SIZE * LoopZ;
+
+				InstanceTransform.SetLocation(FVector(X, Y, Z));
+				InstanceTransform.SetScale3D(FVector(1.0f, 1.0f, 1.0f));
+
+				ISMComp->AddInstance(InstanceTransform);
+			// }
 		}
 	}
 
 	AddInstanceComponent(ISMComp);
 }
+
+void AChunk::SetVisibility(bool IsVisible) {
+	SetActorHiddenInGame(!IsVisible);
+	SetActorEnableCollision(IsVisible);
+}
+

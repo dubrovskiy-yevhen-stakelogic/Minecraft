@@ -155,8 +155,8 @@ protected:
 	bool EnableTouchscreenMovement(UInputComponent* InputComponent);
 
 private:
-	const int RENDER_RANGE_TILES = 3;
-	const int RENDER_RANGE = 500;
+	const int RENDER_RANGE_TILES = 10;
+	// const int RENDER_RANGE = 500;
 
 	void DestroyChunksOutsideRenderRange();
 
@@ -199,7 +199,9 @@ private:
 
 	UPROPERTY(EditAnywhere)
 	TArray<AWieldable*> Inventory;
-	TArray<AChunk*> SpawnedChunks;
+
+	TArray<AChunk*> VisibleChunks;
+	TMap<FString, AChunk*> SpawnedChunksMap;
 public:
 	/** Returns Mesh1P subobject **/
 	USkeletalMeshComponent* GetMesh1P() const { return Mesh1P; }

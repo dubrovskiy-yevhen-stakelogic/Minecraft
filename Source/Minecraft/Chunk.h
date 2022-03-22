@@ -22,10 +22,12 @@ protected:
 	virtual void BeginPlay() override;
 
 public:	
-	static const int CHUNK_SIZE_XY = 1000;
+	static const int CHUNK_SIZE_XY = 2000;
 	UInstancedStaticMeshComponent *ISMComp;
+
+	void SetVisibility(bool);
 private:
-	int NUM_X = 10;
-	int NUM_Y = 10;
+	int NUM = 20;
+	int DEPTH = 5;
 	float VOXEL_SIZE = 100;	
 };

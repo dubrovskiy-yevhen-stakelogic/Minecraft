@@ -262,13 +262,18 @@ bool AMinecraftCharacter::EnableTouchscreenMovement(class UInputComponent* Playe
 void AMinecraftCharacter::DestroyChunksOutsideRenderRange() {
 	FVector PlayerLocation = FirstPersonCameraComponent->GetComponentLocation();
 
-	for (int g = 0; g < SpawnedChunks.Num(); g++) {
-		FVector CurrentChunkLoc = SpawnedChunks[g]->GetActorLocation();
+	for (int g = 0; g < VisibleChunks.Num(); g++) {
+		FVector CurrentChunkLoc = VisibleChunks[g]->GetActorLocation();
 		float Distance = FVector::Dist(FVector(PlayerLocation.X, PlayerLocation.Y, 0), CurrentChunkLoc);
 
 		if ( Distance > RENDER_RANGE_TILES * AChunk::CHUNK_SIZE_XY ) {
-			SpawnedChunks[g]->Destroy();
-			SpawnedChunks.RemoveAt(g);
+			// VisibleChunks[g]->Destroy();
+			AChunk* SpawnedChunk = SpawnedChunksMap[CurrentChunkLoc.ToString()];
+			if (SpawnedChunk) {
+				SpawnedChunk->SetVisibility(false);
+			} 
+			
+			VisibleChunks.RemoveAt(g);
 			--g;
 		}
 	}
@@ -280,16 +285,9 @@ void AMinecraftCharacter::SpawnNewChunks() {
 	for (int i = RENDER_RANGE_TILES * -1; i < RENDER_RANGE_TILES; i++) {
 		for (int j = RENDER_RANGE_TILES * -1; j < RENDER_RANGE_TILES; j++) {
 			FVector ChunkLoc = FVector((i + LastPlayerChunkCoord.X) * AChunk::CHUNK_SIZE_XY, ( j + LastPlayerChunkCoord.Y) * AChunk::CHUNK_SIZE_XY, 0);
-			FRotator Rotation(0.0f, 0.0f, 0.0f);			
+			FRotator Rotation(0.0f, 0.0f, 0.0f);		
 
-			bool IsFound = FALSE;
-			for (int g = 0; g < SpawnedChunks.Num(); g++) {
-				FVector CurrentChunkLoc = SpawnedChunks[g]->GetActorLocation();
-				if (ChunkLoc.X == CurrentChunkLoc.X && ChunkLoc.Y == CurrentChunkLoc.Y) {
-					IsFound = TRUE;
-					break;
-				}
-			}
+			bool IsFound = SpawnedChunksMap.Contains(ChunkLoc.ToString());	
 
 			float Distance = FVector::Dist(FVector(PlayerLocation.X, PlayerLocation.Y, 0), ChunkLoc);
 
@@ -297,11 +295,17 @@ void AMinecraftCharacter::SpawnNewChunks() {
 			// GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, toString);
 
 			bool IsInRange = Distance <= RENDER_RANGE_TILES * AChunk::CHUNK_SIZE_XY;
+
+			if (IsFound && IsInRange) {
+				SpawnedChunksMap[ChunkLoc.ToString()]->SetVisibility(true);
+			} 
+
 			bool IsReadyToAddNewChunk = !IsFound && IsInRange;
 
 			if (IsReadyToAddNewChunk) {
 				AChunk* NewChunk = GetWorld()->SpawnActor<AChunk>(FVector(ChunkLoc.X, ChunkLoc.Y, 0),  Rotation);
-				SpawnedChunks.Add(NewChunk);
+				VisibleChunks.Add(NewChunk);
+				SpawnedChunksMap.Add(ChunkLoc.ToString(), NewChunk);
 			}
 		}
 	}
