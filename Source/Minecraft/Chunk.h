@@ -22,12 +22,16 @@ protected:
 	virtual void BeginPlay() override;
 
 public:	
-	static const int CHUNK_SIZE_XY = 2000;
-	UInstancedStaticMeshComponent *ISMComp;
+	static const int CHUNK_SIZE_XY = 1600;
+
+	UInstancedStaticMeshComponent *InstancedGrass;
+	UInstancedStaticMeshComponent *InstancedCooble;
+	UInstancedStaticMeshComponent *InstancedIron;
+	UInstancedStaticMeshComponent *InstancedSnow;
 
 	void SetVisibility(bool);
 private:
-	int NUM = 20;
+	int NUM = 16;
 	int DEPTH = 5;
 	float VOXEL_SIZE = 100;	
 };

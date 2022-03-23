@@ -323,6 +323,8 @@ FIntVector AMinecraftCharacter::GetPlayerChunkCoordinates() {
 void AMinecraftCharacter::Tick(float DeltaTime) {
 	Super::Tick(DeltaTime);
 
+	CheckForBlocks();
+
 	DestroyChunksOutsideRenderRange();
 
 	FIntVector CurrentChunkCoord = GetPlayerChunkCoordinates();
@@ -334,8 +336,7 @@ void AMinecraftCharacter::Tick(float DeltaTime) {
 	LastPlayerChunkCoord = CurrentChunkCoord;
 
 	SpawnNewChunks();
-
-	CheckForBlocks();
+	
 }
 
 void AMinecraftCharacter::CheckForBlocks() {
@@ -352,8 +353,12 @@ void AMinecraftCharacter::CheckForBlocks() {
 	ABlock* PotentialBlock = Cast<ABlock>(LinetraceHit.GetActor());
 		
 	// FString toString = FString::Printf(TEXT("VectorSize=%d"), ChunkLoc.Size());
-	// GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, toString);
-
+	
+	if (PotentialBlock != nullptr) {
+		// GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, "FOUND");
+	} else {
+		// GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, "NOT FOUND");
+	}
 
 	if (PotentialBlock != CurrentBlock && CurrentBlock != nullptr) {
 		CurrentBlock->ResetBlock();
