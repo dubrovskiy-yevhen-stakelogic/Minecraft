@@ -191,7 +191,11 @@ private:
 
 	void BreakBlock();
 
+	AChunk* CurrentChunk;
+
 	ABlock* CurrentBlock;
+	FVector_NetQuantize HitLocation;
+
 	float Reach;
 
 	FTimerHandle BlockBreakingHandle;
