@@ -21,9 +21,8 @@ protected:
 
 public:
 	uint8 MinimumMaterial;
-
-	UPROPERTY(EditDefaultsOnly) 
 	UStaticMeshComponent* SM_Block;
+	AActor* Chunk;
 
 	UPROPERTY(EditDefaultsOnly)
 	float Resistance;
@@ -32,8 +31,19 @@ public:
 	UPROPERTY(BlueprintReadWrite)
 	float BreakingStage;
 
+
+	void SetStaticMesh(UStaticMeshComponent*);
+	UStaticMeshComponent* GetStaticMesh();
+
 	void Break();
 	void ResetBlock();
+
+	void Hide();
+	void Place(UStaticMesh* StaticMesh, FVector Location);
+
+	void Attach(class AActor *owner);
+
+	void SetChunk(AActor*);
 
 	void OnBroken(bool HasRequiredPickaxe);
 };

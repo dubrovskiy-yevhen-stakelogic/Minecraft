@@ -34,14 +34,16 @@ public:
 
 	void ResetBlock();
 	void Break();
-	void PlaceTemporaryBlock();
 	void DestroyTMPBlock();
+
+	void OnBlockDestroyed();
 
 private:
 	int NUM = 16;
-	int DEPTH = 5;
+	int DEPTH = 2;
+
 	float VOXEL_SIZE = 100;
-	int BreakingStage = 0;
+	// int BreakingStage = 0;
 
 	FVector BrakeLocation;
 	UInstancedStaticMeshComponent *BrakeInstance;
@@ -51,7 +53,11 @@ private:
 	UInstancedStaticMeshComponent *InstancedIron;
 	UInstancedStaticMeshComponent *InstancedSnow;
 
-	UStaticMeshComponent* BreakingBlock;
+	// UStaticMeshComponent* BreakingBlock;
 
 	bool IsInBox(FVector, FVector_NetQuantize);
+
+	int FindBlockInInstance(UInstancedStaticMeshComponent *, FVector_NetQuantize);
+
+	ABlock* BreakingBlock;
 };

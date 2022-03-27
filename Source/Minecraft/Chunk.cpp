@@ -12,6 +12,7 @@ AChunk::AChunk() {
 	SetActorEnableCollision(true);
 
 	RootComponent = CreateDefaultSubobject<USceneComponent>("SceneComponent");
+	BreakingBlock = NewObject<ABlock>(this, TEXT("Breaking block")); 
 
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> GrassBlockAsset(TEXT("StaticMesh'/Game/Assets/Meshes/Blocks/SM_Grassblock.SM_GrassBlock'"));
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> IronBlockAsset(TEXT("StaticMesh'/Game/Assets/Meshes/Blocks/SM_IronBlock.SM_IronBlock'"));
@@ -23,7 +24,10 @@ AChunk::AChunk() {
 	InstancedIron = NewObject<UInstancedStaticMeshComponent>(this, TEXT("Instanced Iron blocks"));
 	InstancedSnow = NewObject<UInstancedStaticMeshComponent>(this, TEXT("Instanced Snow blocks"));
 
-	BreakingBlock = NewObject<UStaticMeshComponent>(this, TEXT("Temporary block!"));
+	UStaticMeshComponent* BreakingBlockMesh = NewObject<UStaticMeshComponent>(this, TEXT("Temporary block!"));
+
+	BreakingBlock->SetStaticMesh(BreakingBlockMesh);
+	BreakingBlock->SetChunk(this);
 
 	InstancedCooble->SetStaticMesh(CoobleBlockAsset.Object);
 	InstancedGrass->SetStaticMesh(GrassBlockAsset.Object);
@@ -34,7 +38,8 @@ AChunk::AChunk() {
 	InstancedGrass->AttachToComponent(this->RootComponent, FAttachmentTransformRules::KeepRelativeTransform);
 	InstancedIron->AttachToComponent(this->RootComponent, FAttachmentTransformRules::KeepRelativeTransform);
 	InstancedSnow->AttachToComponent(this->RootComponent, FAttachmentTransformRules::KeepRelativeTransform);
-	BreakingBlock->AttachToComponent(this->RootComponent, FAttachmentTransformRules::KeepRelativeTransform);
+
+	BreakingBlockMesh->AttachToComponent(this->RootComponent, FAttachmentTransformRules::KeepRelativeTransform);
 }
 
 // Called when the game starts or when spawned
@@ -43,28 +48,24 @@ void AChunk::BeginPlay() {
 
 	FVector Location = GetActorLocation();
 
-	float NoiseDensity =  0.00025;// FMath::RandRange(1.0f, 3.0f) / 10000.0f;
-	int NoiseScale = 6; // FMath::RandRange(2, 6);
-
-	int counter = 0;
+	float NoiseDensity =  0.00025;
+	int NoiseScale = 6;
 
 	for (int LoopX = 0; LoopX < NUM; LoopX++) {
 		for (int LoopY = 0; LoopY < NUM; LoopY++) {
-			// for (int LoopZ = 0; LoopZ < DEPTH; LoopZ++) {
-				FTransform InstanceTransform;
+			FTransform InstanceTransform;
 
-				float X = LoopX * VOXEL_SIZE;
-				float Y = LoopY * VOXEL_SIZE;
+			float X = LoopX * VOXEL_SIZE;
+			float Y = LoopY * VOXEL_SIZE;
 
-				float Z = (FMath::Floor(USimplexNoiseBPLibrary::SimplexNoise2D(X + Location.X, Y + Location.Y, NoiseDensity) * NoiseScale) ) * VOXEL_SIZE;
+			float InitZ = (FMath::Floor(USimplexNoiseBPLibrary::SimplexNoise2D(X + Location.X, Y + Location.Y, NoiseDensity) * NoiseScale) ) * VOXEL_SIZE;
+
+			for (int currentDepth = 0; currentDepth < DEPTH; currentDepth++) { 
+				float Z = InitZ - currentDepth * VOXEL_SIZE;
 
 				InstanceTransform.SetLocation(FVector(X, Y, Z));
 
 				int z = FMath::RoundToInt(Z / VOXEL_SIZE);
-
-				struct MyStruct s;
-
-				s.Location = FVector(X + Location.X, Y + Location.Y, Z);
 
 				if (z >= 5) {
 					InstancedSnow->AddInstance(InstanceTransform);
@@ -75,66 +76,66 @@ void AChunk::BeginPlay() {
 				} else {
 					InstancedCooble->AddInstance(InstanceTransform);
 				}
-
-				// InstancedSnow->UpdateInstanceTransform();
-
-			// }
+			}
 		}
 	}
 }
 
-void AChunk::FindBlock(FVector_NetQuantize HitLocation) {	
+int AChunk::FindBlockInInstance(UInstancedStaticMeshComponent * Instances, FVector_NetQuantize HitLocation) {
 	FVector Location = GetActorLocation();
 
-	for (int i = InstancedSnow->GetInstanceCount() - 1; i >= 0; i--) {
+	for (int i = Instances->GetInstanceCount() - 1; i >= 0; i--) {
 		//Save the transform of current Instance.
 		FTransform Out;
-		InstancedSnow->GetInstanceTransform(i, Out);
+		Instances->GetInstanceTransform(i, Out);
 
 		FVector MeshLocation = Out.GetLocation() + Location + FVector(VOXEL_SIZE / -2, VOXEL_SIZE / -2, VOXEL_SIZE / -2);
 
 		if (IsInBox(MeshLocation, HitLocation)) {
-			InstancedSnow->RemoveInstance(i);
-
-			BrakeLocation = Out.GetLocation();
-			BrakeInstance = InstancedSnow;
-
-			PlaceTemporaryBlock();
-
-			return;
+			return i;
 		}
     }
+
+	return -1;
 }
+
+void AChunk::FindBlock(FVector_NetQuantize HitLocation) {
+	FVector Location = GetActorLocation();
+	int ind = -1;
+
+	UInstancedStaticMeshComponent *InstancesArray[4] = { InstancedSnow, InstancedGrass, InstancedIron, InstancedCooble };
+
+	for (int i = 0; i < 4; i++) {
+		ind = FindBlockInInstance(InstancesArray[i], HitLocation);
+		if (ind != -1) {
+			FTransform Out;
+			InstancesArray[i]->GetInstanceTransform(ind, Out);
+			InstancesArray[i]->RemoveInstance(ind);
+
+			BrakeLocation = Out.GetLocation();
+			BrakeInstance = InstancesArray[i];
+
+			BreakingBlock->Place(InstancesArray[i]->GetStaticMesh(), BrakeLocation);
+			return;
+		}
+	}
+}
+
+void AChunk::OnBlockDestroyed() {
+	BrakeInstance = NULL;
+}
+
 void AChunk::ResetBlock() {
 	if (BrakeInstance == nullptr) {
 		return;
 	}
 
-	BreakingStage = 0;
-	BreakingBlock->SetVisibility(false);
+	BreakingBlock->Hide();
 
 	FTransform InstanceTransform;
 	InstanceTransform.SetLocation(BrakeLocation);
-
 	BrakeInstance->AddInstance(InstanceTransform);
-
 	BrakeInstance = NULL;
-}
-
-void AChunk::PlaceTemporaryBlock() {
-	BreakingBlock->SetStaticMesh(BrakeInstance->GetStaticMesh());
-	BreakingBlock->SetRelativeLocation(BrakeLocation);
-	BreakingBlock->SetVisibility(true);
-	BreakingBlock->SetActive(true);
-	BreakingBlock->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-}
-
-void AChunk::DestroyTMPBlock() {
-	BreakingStage = 0;
-	BrakeInstance = NULL;
-	BreakingBlock->SetVisibility(false);
-	BreakingBlock->SetActive(false);
-	BreakingBlock->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 }
 
 void AChunk::Break() {
@@ -142,19 +143,7 @@ void AChunk::Break() {
 		return;
 	}
 
-	++BreakingStage;
-
-	float CrackingValue = 1.0f - (BreakingStage / 5.f);
-
-	UMaterialInstanceDynamic* MatInstance = BreakingBlock->CreateDynamicMaterialInstance(0);
-
-	if (MatInstance != nullptr) {
-		MatInstance->SetScalarParameterValue(FName("CrackingValue"), CrackingValue);
-	}
-
-	if (BreakingStage == 5.f) {
-		DestroyTMPBlock();
-	}
+	BreakingBlock->Break();
 }
 
 void AChunk::SetVisibility(bool IsVisible) {
@@ -163,20 +152,18 @@ void AChunk::SetVisibility(bool IsVisible) {
 }
 
 bool AChunk::IsInBox(FVector BoxLocation, FVector_NetQuantize HitLocation) {
-	bool IsFound = true;
-
 	if (HitLocation.X < BoxLocation.X || HitLocation.X > (BoxLocation.X + VOXEL_SIZE)) {
-		IsFound = false;
+		return false;
 	}
 
 	if (HitLocation.Y < BoxLocation.Y || HitLocation.Y > (BoxLocation.Y + VOXEL_SIZE)) {
-		IsFound = false;
+		return false;
 	}
 
 	if (HitLocation.Z < BoxLocation.Z || HitLocation.Z > (BoxLocation.Z + VOXEL_SIZE)) {
-		IsFound = false;
+		return false;
 	}
 
-	return IsFound;
+	return true;
 }
 

@@ -353,30 +353,10 @@ void AMinecraftCharacter::CheckForBlocks() {
 
 	if (Chunk != nullptr) {
 		CurrentChunk = Chunk;
-		// GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, "Hit Lcoation=" + LinetraceHit.Location.ToString());
 		HitLocation = LinetraceHit.Location;
-		// CurrentChunk->FindBlock(HitLocation);
 	} else {
 		CurrentChunk = NULL;
 	}
-	/*
-
-	if (PotentialBlock != CurrentBlock && CurrentBlock != nullptr) {
-		CurrentBlock->ResetBlock();
-	}
-
-	if (PotentialBlock == NULL) {
-		CurrentBlock = nullptr;
-		return;
-	}
-
-	if (CurrentBlock != nullptr && !bIsBreaking) {
-		CurrentBlock->ResetBlock();
-	}
-
-	CurrentBlock = PotentialBlock;
-	*/
-	// GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, *CurrentBlock->GetName());
 }
 
 void AMinecraftCharacter::PlayHitAnim() {
@@ -396,8 +376,6 @@ void AMinecraftCharacter::OnHit() {
 	PlayHitAnim();
 
 	if (CurrentChunk != nullptr) {
-		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("ZASHEL!!!"));
-
 		CurrentChunk->FindBlock(HitLocation);
 
 		bIsBreaking = true;
@@ -407,19 +385,6 @@ void AMinecraftCharacter::OnHit() {
 		GetWorld()->GetTimerManager().SetTimer(BlockBreakingHandle, this, &AMinecraftCharacter::BreakBlock, TimeBetweenBreaks, true);
 		GetWorld()->GetTimerManager().SetTimer(HitAnimHandle, this, &AMinecraftCharacter::PlayHitAnim, 0.4, true);
 	}
-
-	/*
-
-	if (CurrentBlock != nullptr) {
-		// GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("ZASHEL!!!"));
-		bIsBreaking = true;
-
-		float TimeBetweenBreaks = (( CurrentBlock->Resistance) / 100.f) / 2;
-
-		GetWorld()->GetTimerManager().SetTimer(BlockBreakingHandle, this, &AMinecraftCharacter::BreakBlock, TimeBetweenBreaks, true);
-		GetWorld()->GetTimerManager().SetTimer(HitAnimHandle, this, &AMinecraftCharacter::PlayHitAnim, 0.4, true);
-	}
-	*/
 }
 
 void AMinecraftCharacter::EndHit() {
