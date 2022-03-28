@@ -5,10 +5,7 @@
 #include "Chunk.h"
 
 // Sets default values
-ABlock::ABlock()
-{
-	// SM_Block = NewObject<UStaticMeshComponent>(this, TEXT("Temporary block!")); // CreateDefaultSubobject<UStaticMeshComponent>(TEXT("BlockMesh"));
-
+ABlock::ABlock() {
 	Resistance = 20.f;
 	BreakingStage = 0.f;
 	MinimumMaterial = 0;
@@ -48,10 +45,10 @@ void ABlock::Break() {
 	}
 }
 
-void ABlock::Place(UStaticMesh* StaticMesh, FVector Location) {
+void ABlock::Place(UMaterialInterface* Material, FVector Location) {
 	BreakingStage = 0.f;
 	
-	SM_Block->SetStaticMesh(StaticMesh);
+	SM_Block->SetMaterial(0, Material);
 	SM_Block->SetRelativeLocation(Location);
 
 	SM_Block->SetVisibility(true);

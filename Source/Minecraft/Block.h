@@ -7,8 +7,7 @@
 #include "Block.generated.h"
 
 UCLASS()
-class MINECRAFT_API ABlock : public AActor
-{
+class MINECRAFT_API ABlock : public AActor {
 	GENERATED_BODY()
 	
 public:	
@@ -39,7 +38,7 @@ public:
 	void ResetBlock();
 
 	void Hide();
-	void Place(UStaticMesh* StaticMesh, FVector Location);
+	void Place(UMaterialInterface* Material, FVector Location);
 
 	void Attach(class AActor *owner);
 

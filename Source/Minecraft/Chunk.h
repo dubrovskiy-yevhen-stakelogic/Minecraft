@@ -7,11 +7,12 @@
 #include "GameFramework/Actor.h"
 #include "Chunk.generated.h"
 
-struct MyStruct {
-	int index;
-	FVector Location;
-	UInstancedStaticMeshComponent * InstancedMesh;
-};
+/*
+0 - snow 
+1 - grass
+2 - iron
+3 - cobble
+*/
 
 UCLASS()
 class MINECRAFT_API AChunk : public AActor
@@ -41,19 +42,12 @@ public:
 private:
 	int NUM = 16;
 	int DEPTH = 2;
-
 	float VOXEL_SIZE = 100;
-	// int BreakingStage = 0;
 
 	FVector BrakeLocation;
-	UInstancedStaticMeshComponent *BrakeInstance;
+	int BrakeInstanceInd;
 
-	UInstancedStaticMeshComponent *InstancedGrass;
-	UInstancedStaticMeshComponent *InstancedCooble;
-	UInstancedStaticMeshComponent *InstancedIron;
-	UInstancedStaticMeshComponent *InstancedSnow;
-
-	// UStaticMeshComponent* BreakingBlock;
+	TArray<UInstancedStaticMeshComponent*> Instances;
 
 	bool IsInBox(FVector, FVector_NetQuantize);
 

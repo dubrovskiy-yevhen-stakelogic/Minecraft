@@ -12,32 +12,29 @@ AChunk::AChunk() {
 	SetActorEnableCollision(true);
 
 	RootComponent = CreateDefaultSubobject<USceneComponent>("SceneComponent");
-	BreakingBlock = NewObject<ABlock>(this, TEXT("Breaking block")); 
+	BreakingBlock = NewObject<ABlock>(this, TEXT("Breaking block"));
 
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> GrassBlockAsset(TEXT("StaticMesh'/Game/Assets/Meshes/Blocks/SM_Grassblock.SM_GrassBlock'"));
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> IronBlockAsset(TEXT("StaticMesh'/Game/Assets/Meshes/Blocks/SM_IronBlock.SM_IronBlock'"));
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> CoobleBlockAsset(TEXT("StaticMesh'/Game/Assets/Meshes/Blocks/SM_CobbleBlock.SM_CobbleBlock'"));
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> SnowBlockAsset(TEXT("StaticMesh'/Game/Assets/Meshes/Blocks/SM_SnowBlock.SM_SnowBlock'"));
 
-	InstancedGrass = NewObject<UInstancedStaticMeshComponent>(this, TEXT("Instanced Grass blocks"));
-	InstancedCooble = NewObject<UInstancedStaticMeshComponent>(this, TEXT("Instanced Cobble blocks"));
-	InstancedIron = NewObject<UInstancedStaticMeshComponent>(this, TEXT("Instanced Iron blocks"));
-	InstancedSnow = NewObject<UInstancedStaticMeshComponent>(this, TEXT("Instanced Snow blocks"));
+	UStaticMesh* Meshes[4] = {  SnowBlockAsset.Object, GrassBlockAsset.Object, IronBlockAsset.Object, CoobleBlockAsset.Object };
+	FName MeshesName[] = { "Snow", "Grass", "Iron", "Cobble" };
+	int AssetsLength = sizeof Meshes / sizeof Meshes[0];
 
-	UStaticMeshComponent* BreakingBlockMesh = NewObject<UStaticMeshComponent>(this, TEXT("Temporary block!"));
+	UStaticMeshComponent* BreakingBlockMesh = NewObject<UStaticMeshComponent>(this, TEXT("Breaking mesh block"));
 
 	BreakingBlock->SetStaticMesh(BreakingBlockMesh);
 	BreakingBlock->SetChunk(this);
+	BreakingBlockMesh->SetStaticMesh(Meshes[0]);
+	BreakingBlock->Hide();
 
-	InstancedCooble->SetStaticMesh(CoobleBlockAsset.Object);
-	InstancedGrass->SetStaticMesh(GrassBlockAsset.Object);
-	InstancedIron->SetStaticMesh(IronBlockAsset.Object);
-	InstancedSnow->SetStaticMesh(SnowBlockAsset.Object);
-
-	InstancedCooble->AttachToComponent(this->RootComponent, FAttachmentTransformRules::KeepRelativeTransform);
-	InstancedGrass->AttachToComponent(this->RootComponent, FAttachmentTransformRules::KeepRelativeTransform);
-	InstancedIron->AttachToComponent(this->RootComponent, FAttachmentTransformRules::KeepRelativeTransform);
-	InstancedSnow->AttachToComponent(this->RootComponent, FAttachmentTransformRules::KeepRelativeTransform);
+	for (int i = 0; i < AssetsLength; i++) {
+		Instances.Add(NewObject<UInstancedStaticMeshComponent>(this, MeshesName[i]));
+		Instances[i]->SetStaticMesh(Meshes[i]);
+		Instances[i]->AttachToComponent(this->RootComponent, FAttachmentTransformRules::KeepRelativeTransform);
+	}
 
 	BreakingBlockMesh->AttachToComponent(this->RootComponent, FAttachmentTransformRules::KeepRelativeTransform);
 }
@@ -68,26 +65,26 @@ void AChunk::BeginPlay() {
 				int z = FMath::RoundToInt(Z / VOXEL_SIZE);
 
 				if (z >= 5) {
-					InstancedSnow->AddInstance(InstanceTransform);
+					Instances[0]->AddInstance(InstanceTransform);
 				} else if (z >= -3) {
-					InstancedGrass->AddInstance(InstanceTransform);
+					Instances[1]->AddInstance(InstanceTransform);
 				} else if (z == -4) {
-					InstancedIron->AddInstance(InstanceTransform);
+					Instances[2]->AddInstance(InstanceTransform);
 				} else {
-					InstancedCooble->AddInstance(InstanceTransform);
+					Instances[3]->AddInstance(InstanceTransform);
 				}
 			}
 		}
 	}
 }
 
-int AChunk::FindBlockInInstance(UInstancedStaticMeshComponent * Instances, FVector_NetQuantize HitLocation) {
+int AChunk::FindBlockInInstance(UInstancedStaticMeshComponent * InstanceComponent, FVector_NetQuantize HitLocation) {
 	FVector Location = GetActorLocation();
 
-	for (int i = Instances->GetInstanceCount() - 1; i >= 0; i--) {
+	for (int i = InstanceComponent->GetInstanceCount() - 1; i >= 0; i--) {
 		//Save the transform of current Instance.
 		FTransform Out;
-		Instances->GetInstanceTransform(i, Out);
+		InstanceComponent->GetInstanceTransform(i, Out);
 
 		FVector MeshLocation = Out.GetLocation() + Location + FVector(VOXEL_SIZE / -2, VOXEL_SIZE / -2, VOXEL_SIZE / -2);
 
@@ -103,30 +100,27 @@ void AChunk::FindBlock(FVector_NetQuantize HitLocation) {
 	FVector Location = GetActorLocation();
 	int ind = -1;
 
-	UInstancedStaticMeshComponent *InstancesArray[4] = { InstancedSnow, InstancedGrass, InstancedIron, InstancedCooble };
-
-	for (int i = 0; i < 4; i++) {
-		ind = FindBlockInInstance(InstancesArray[i], HitLocation);
+	for (int i = 0; i < Instances.Num(); i++) {
+		ind = FindBlockInInstance(Instances[i], HitLocation);
 		if (ind != -1) {
 			FTransform Out;
-			InstancesArray[i]->GetInstanceTransform(ind, Out);
-			InstancesArray[i]->RemoveInstance(ind);
-
+			Instances[i]->GetInstanceTransform(ind, Out);
+			Instances[i]->RemoveInstance(ind);
 			BrakeLocation = Out.GetLocation();
-			BrakeInstance = InstancesArray[i];
+			BrakeInstanceInd = i;
 
-			BreakingBlock->Place(InstancesArray[i]->GetStaticMesh(), BrakeLocation);
+			BreakingBlock->Place(Instances[i]->GetMaterial(0), BrakeLocation);
 			return;
 		}
 	}
 }
 
 void AChunk::OnBlockDestroyed() {
-	BrakeInstance = NULL;
+	BrakeInstanceInd = -1;
 }
 
 void AChunk::ResetBlock() {
-	if (BrakeInstance == nullptr) {
+	if (BrakeInstanceInd == -1) {
 		return;
 	}
 
@@ -134,12 +128,12 @@ void AChunk::ResetBlock() {
 
 	FTransform InstanceTransform;
 	InstanceTransform.SetLocation(BrakeLocation);
-	BrakeInstance->AddInstance(InstanceTransform);
-	BrakeInstance = NULL;
+	Instances[BrakeInstanceInd]->AddInstance(InstanceTransform);
+	BrakeInstanceInd = -1;
 }
 
 void AChunk::Break() {
-	if (BrakeInstance == nullptr) {
+	if (BrakeInstanceInd == -1) {
 		return;
 	}
 
