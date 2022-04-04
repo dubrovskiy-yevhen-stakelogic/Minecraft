@@ -1,7 +1,6 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "MinecraftCharacter.h"
-#include "MinecraftProjectile.h"
 #include "Animation/AnimInstance.h"
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
@@ -335,6 +334,7 @@ void AMinecraftCharacter::Tick(float DeltaTime) {
 
 	LastPlayerChunkCoord = CurrentChunkCoord;
 
+
 	SpawnNewChunks();
 	
 }
@@ -410,6 +410,17 @@ int32 AMinecraftCharacter::GetCurrentInventorySlot() {
 
 bool AMinecraftCharacter::AddItemToInventory(AWieldable* Item) {
 	if (Item != NULL) {
+		if (Item->ToolType == ETool::Block) {
+			for (int i = 0; i < Inventory.Num(); i++) {
+				if (Inventory[i] != nullptr) {
+					if (Inventory[i]->MaterialType == Item->MaterialType) {
+						++Item->Counter;
+						return true;
+					}
+				}
+			}
+		}
+
 		const int32 AvailableSlot = Inventory.Find(nullptr);
 
 		if (AvailableSlot != INDEX_NONE) {

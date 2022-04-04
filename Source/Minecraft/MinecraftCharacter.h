@@ -74,10 +74,6 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category=Gameplay)
 	FVector GunOffset;
 
-	/** Projectile class to spawn */
-	UPROPERTY(EditDefaultsOnly, Category=Projectile)
-	TSubclassOf<class AMinecraftProjectile> ProjectileClass;
-
 	/** Sound to play each time we fire */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category=Gameplay)
 	USoundBase* FireSound;
@@ -155,7 +151,7 @@ protected:
 	bool EnableTouchscreenMovement(UInputComponent* InputComponent);
 
 private:
-	const int RENDER_RANGE_TILES = 10;
+	const int RENDER_RANGE_TILES = 3;
 	// const int RENDER_RANGE = 500;
 
 	void DestroyChunksOutsideRenderRange();

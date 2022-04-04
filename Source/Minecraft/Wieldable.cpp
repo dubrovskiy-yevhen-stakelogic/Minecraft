@@ -4,13 +4,13 @@
 #include "MinecraftCharacter.h"
 
 // Sets default values
-AWieldable::AWieldable()
-{
+AWieldable::AWieldable() {
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
-	WieldableMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("WieldableMesh"));
+	Counter = 1;
 
+	WieldableMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("WieldableMesh"));
 	PickupTrigger = CreateDefaultSubobject<UBoxComponent>(TEXT("PickupTrigger"));
 
 	PickupTrigger->SetGenerateOverlapEvents(true);
@@ -24,21 +24,17 @@ AWieldable::AWieldable()
 }
 
 // Called when the game starts or when spawned
-void AWieldable::BeginPlay()
-{
+void AWieldable::BeginPlay() {
 	Super::BeginPlay();
-	
 }
 
 // Called every frame
-void AWieldable::Tick(float DeltaTime)
-{
+void AWieldable::Tick(float DeltaTime) {
 	Super::Tick(DeltaTime);
 
 	FRotator rotation = WieldableMesh->GetComponentRotation();
 	rotation.Yaw += 1.f;
 	WieldableMesh->SetRelativeRotation(rotation);
-
 }
 
 void AWieldable::OnOverlap(UPrimitiveComponent*, class AActor* OtherActor, UPrimitiveComponent*, int32, bool, const FHitResult&) {
@@ -47,7 +43,8 @@ void AWieldable::OnOverlap(UPrimitiveComponent*, class AActor* OtherActor, UPrim
 		Character->FP_Gun->SetSkeletalMesh(WieldableMesh->SkeletalMesh);
 		Character->AddItemToInventory(this);
 
-		Hide(true);
+		Destroy();
+		// Hide(true);
 	}
 }
 

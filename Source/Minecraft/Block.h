@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "AssetsManager.h"
 #include "GameFramework/Actor.h"
 #include "Block.generated.h"
 
@@ -14,18 +15,25 @@ public:
 	// Sets default values for this actor's properties
 	ABlock();
 
+private:
+	FVector Location;
+
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
 public:
-	uint8 MinimumMaterial;
+	/* mesh of breaking block */
 	UStaticMeshComponent* SM_Block;
+
+	/* Chunk where we will put block */
 	AActor* Chunk;
+	USkeletalMesh* SkeletalMeshAsset;
+
+	void SetLocation(FVector);	
 
 	UPROPERTY(EditDefaultsOnly)
 	float Resistance;
-
 
 	UPROPERTY(BlueprintReadWrite)
 	float BreakingStage;
@@ -45,4 +53,6 @@ public:
 	void SetChunk(AActor*);
 
 	void OnBroken(bool HasRequiredPickaxe);
+
+	AAssetsManager* AssetsManager;
 };

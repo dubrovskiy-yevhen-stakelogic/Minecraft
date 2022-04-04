@@ -22,6 +22,8 @@ protected:
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
+
+	int Counter = 0;
 	
 	UPROPERTY(EditAnywhere)
 	TEnumAsByte<ETool> ToolType;

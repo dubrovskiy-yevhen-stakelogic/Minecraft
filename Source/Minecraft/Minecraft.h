@@ -7,12 +7,14 @@
 
 UENUM()
 enum EMaterial {
-	NoneMaterial = 1,
-	Wooden = 2,
-	Stone = 4,
-	Iron = 6,
-	Diamond = 8,
-	Golden = 12
+	NoneMaterial,
+	Grass,
+	Wooden,
+	Cobble ,
+	Iron,
+	Snow,
+	Diamond,
+	Golden
 };
 
 UENUM()
@@ -21,5 +23,6 @@ enum ETool {
 	Pickaxe,
 	Axe,
 	Shovel,
-	Sword
+	Sword,
+	Block
 };

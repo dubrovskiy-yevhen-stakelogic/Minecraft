@@ -2,6 +2,8 @@
 
 #pragma once
 
+#include "Minecraft.h"
+#include "AssetsManager.h"
 #include "CoreMinimal.h"
 #include "Block.h"
 #include "GameFramework/Actor.h"
@@ -29,7 +31,7 @@ protected:
 
 public:	
 	static const int CHUNK_SIZE_XY = 1600;
-	// TArray<MyStruct> InstancedArray;
+
 	void FindBlock(FVector_NetQuantize);
 	void SetVisibility(bool);
 

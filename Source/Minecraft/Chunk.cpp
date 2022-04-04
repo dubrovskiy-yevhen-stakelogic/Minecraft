@@ -7,32 +7,31 @@
 // Sets default values
 AChunk::AChunk() {
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
-	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.bCanEverTick = false;
 
 	SetActorEnableCollision(true);
 
 	RootComponent = CreateDefaultSubobject<USceneComponent>("SceneComponent");
 	BreakingBlock = NewObject<ABlock>(this, TEXT("Breaking block"));
 
-	static ConstructorHelpers::FObjectFinder<UStaticMesh> GrassBlockAsset(TEXT("StaticMesh'/Game/Assets/Meshes/Blocks/SM_Grassblock.SM_GrassBlock'"));
-	static ConstructorHelpers::FObjectFinder<UStaticMesh> IronBlockAsset(TEXT("StaticMesh'/Game/Assets/Meshes/Blocks/SM_IronBlock.SM_IronBlock'"));
-	static ConstructorHelpers::FObjectFinder<UStaticMesh> CoobleBlockAsset(TEXT("StaticMesh'/Game/Assets/Meshes/Blocks/SM_CobbleBlock.SM_CobbleBlock'"));
-	static ConstructorHelpers::FObjectFinder<UStaticMesh> SnowBlockAsset(TEXT("StaticMesh'/Game/Assets/Meshes/Blocks/SM_SnowBlock.SM_SnowBlock'"));
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> UnitBlockAsset(TEXT("StaticMesh'/Game/Assets/Meshes/Blocks/SM_UnitBlock.SM_UnitBlock'"));
 
-	UStaticMesh* Meshes[4] = {  SnowBlockAsset.Object, GrassBlockAsset.Object, IronBlockAsset.Object, CoobleBlockAsset.Object };
-	FName MeshesName[] = { "Snow", "Grass", "Iron", "Cobble" };
-	int AssetsLength = sizeof Meshes / sizeof Meshes[0];
+	AAssetsManager* AssetsManager = NewObject<AAssetsManager>(this, TEXT("AssetsManager"));
+
+	EMaterial MaterialTypes[4] = {  EMaterial::Snow,  EMaterial::Grass,  EMaterial::Iron,  EMaterial::Cobble };
+	int AssetsLength = sizeof MaterialTypes / sizeof MaterialTypes[0];
 
 	UStaticMeshComponent* BreakingBlockMesh = NewObject<UStaticMeshComponent>(this, TEXT("Breaking mesh block"));
 
 	BreakingBlock->SetStaticMesh(BreakingBlockMesh);
 	BreakingBlock->SetChunk(this);
-	BreakingBlockMesh->SetStaticMesh(Meshes[0]);
+	BreakingBlockMesh->SetStaticMesh(UnitBlockAsset.Object);
 	BreakingBlock->Hide();
 
 	for (int i = 0; i < AssetsLength; i++) {
-		Instances.Add(NewObject<UInstancedStaticMeshComponent>(this, MeshesName[i]));
-		Instances[i]->SetStaticMesh(Meshes[i]);
+		Instances.Add(NewObject<UInstancedStaticMeshComponent>(this, AssetsManager->ConvertMaterialTypeToString(MaterialTypes[i])));
+		Instances[i]->SetStaticMesh(UnitBlockAsset.Object);
+		Instances[i]->SetMaterial(0, AssetsManager->GetMaterialByType(MaterialTypes[i]));
 		Instances[i]->AttachToComponent(this->RootComponent, FAttachmentTransformRules::KeepRelativeTransform);
 	}
 
@@ -108,6 +107,8 @@ void AChunk::FindBlock(FVector_NetQuantize HitLocation) {
 			Instances[i]->RemoveInstance(ind);
 			BrakeLocation = Out.GetLocation();
 			BrakeInstanceInd = i;
+
+			BreakingBlock->SetLocation(BrakeLocation + Location);
 
 			BreakingBlock->Place(Instances[i]->GetMaterial(0), BrakeLocation);
 			return;
