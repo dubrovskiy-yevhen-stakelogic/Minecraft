@@ -9,6 +9,8 @@ UENUM()
 enum EMaterial {
 	NoneMaterial,
 	Grass,
+	WoodOak,
+	Leaves,
 	Wooden,
 	Cobble ,
 	Iron,

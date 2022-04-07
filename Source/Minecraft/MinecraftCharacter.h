@@ -90,6 +90,10 @@ public:
 	UFUNCTION(BlueprintPure, Category = HUD)
 	int32 GetCurrentInventorySlot();
 
+	/* Get the current inventory slot for the hud  */
+	UFUNCTION(BlueprintPure, Category = Inventory)
+	int32 GetCurrentInventoryCounter(uint8 Slot);
+
 	/* Adds an item to our inventory */
 	UFUNCTION(BlueprintPure, Category = Inventory)
 	bool AddItemToInventory(AWieldable* Item);
@@ -151,7 +155,7 @@ protected:
 	bool EnableTouchscreenMovement(UInputComponent* InputComponent);
 
 private:
-	const int RENDER_RANGE_TILES = 3;
+	const int RENDER_RANGE_TILES = 10;
 	// const int RENDER_RANGE = 500;
 
 	void DestroyChunksOutsideRenderRange();

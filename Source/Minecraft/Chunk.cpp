@@ -2,6 +2,7 @@
 
 
 #include "Chunk.h"
+#include "TreeGenerator.h"
 #include "SimplexNoise/SimplexNoiseBPLibrary.h"
 
 // Sets default values
@@ -18,7 +19,7 @@ AChunk::AChunk() {
 
 	AAssetsManager* AssetsManager = NewObject<AAssetsManager>(this, TEXT("AssetsManager"));
 
-	EMaterial MaterialTypes[4] = {  EMaterial::Snow,  EMaterial::Grass,  EMaterial::Iron,  EMaterial::Cobble };
+	EMaterial MaterialTypes[6] = {  EMaterial::Snow,  EMaterial::Grass,  EMaterial::Iron,  EMaterial::Cobble, EMaterial::WoodOak, EMaterial::Leaves };
 	int AssetsLength = sizeof MaterialTypes / sizeof MaterialTypes[0];
 
 	UStaticMeshComponent* BreakingBlockMesh = NewObject<UStaticMeshComponent>(this, TEXT("Breaking mesh block"));
@@ -63,13 +64,17 @@ void AChunk::BeginPlay() {
 
 				int z = FMath::RoundToInt(Z / VOXEL_SIZE);
 
-				if (z >= 5) {
-					Instances[0]->AddInstance(InstanceTransform);
-				} else if (z >= -3) {
+				if (currentDepth == 0) {
+					// grass
+					int TreePosibility = FMath::RandRange(0, 100);
+
+					if (TreePosibility == 0) {
+						TreeGenerator::GenerateTree(FVector(X, Y, Z), ReservedTreePosMap, VOXEL_SIZE, Instances[4], Instances[5]);
+					}
+
 					Instances[1]->AddInstance(InstanceTransform);
-				} else if (z == -4) {
-					Instances[2]->AddInstance(InstanceTransform);
 				} else {
+					// cobble
 					Instances[3]->AddInstance(InstanceTransform);
 				}
 			}

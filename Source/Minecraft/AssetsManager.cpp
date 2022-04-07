@@ -11,33 +11,49 @@ AAssetsManager::AAssetsManager() {
 	static ConstructorHelpers::FObjectFinder<UMaterial> SnowBlockAsset(TEXT("Material'/Game/Assets/Materials/M_Snow.M_Snow'"));
 	static ConstructorHelpers::FObjectFinder<UMaterial> CobbleBlockAsset(TEXT("Material'/Game/Assets/Materials/M_Cobble.M_Cobble'"));
 
-	static ConstructorHelpers::FObjectFinder<UTexture2D> GrassTexturehAsset(TEXT("Texture2D'/Game/Assets/Textures/T_GrassThumbnail.T_GrassThumbnail'"));
-	static ConstructorHelpers::FObjectFinder<UTexture2D> IronTexturehAsset(TEXT("Texture2D'/Game/Assets/Textures/T_IronThumbnail.T_IronThumbnail'"));
-	static ConstructorHelpers::FObjectFinder<UTexture2D> SnowTexturehAsset(TEXT("Texture2D'/Game/Assets/Textures/T_SnowThumbnail.T_SnowThumbnail'"));
-	static ConstructorHelpers::FObjectFinder<UTexture2D> CobbleTexturehAsset(TEXT("Texture2D'/Game/Assets/Textures/T_CobbleThumbnail.T_CobbleThumbnail'"));
+	static ConstructorHelpers::FObjectFinder<UMaterial> LeavesBlockAsset(TEXT("Material'/Game/Assets/Materials/M_Leaves.M_Leaves'"));
+	static ConstructorHelpers::FObjectFinder<UMaterial> WoodBlockAsset(TEXT("Material'/Game/Assets/Materials/M_Wood.M_Wood'"));
 
-	MaterialItem GrassItem, IronItem, SnowItem, CobbleItem;
+	static ConstructorHelpers::FObjectFinder<UTexture2D> GrassTextureAsset(TEXT("Texture2D'/Game/Assets/Textures/T_GrassThumbnail.T_GrassThumbnail'"));
+	static ConstructorHelpers::FObjectFinder<UTexture2D> IronTextureAsset(TEXT("Texture2D'/Game/Assets/Textures/T_IronThumbnail.T_IronThumbnail'"));
+	static ConstructorHelpers::FObjectFinder<UTexture2D> SnowTextureAsset(TEXT("Texture2D'/Game/Assets/Textures/T_SnowThumbnail.T_SnowThumbnail'"));
+	static ConstructorHelpers::FObjectFinder<UTexture2D> CobbleTextureAsset(TEXT("Texture2D'/Game/Assets/Textures/T_CobbleThumbnail.T_CobbleThumbnail'"));
+
+	static ConstructorHelpers::FObjectFinder<UTexture2D> LeavesTextureAsset(TEXT("Texture2D'/Game/Textures/T_Ground_GrassThumbnail.T_Ground_GrassThumbnail'"));
+	static ConstructorHelpers::FObjectFinder<UTexture2D> WoodTextureAsset(TEXT("Texture2D'/Game/Textures/T_Wood_WalnutThumbnail.T_Wood_WalnutThumbnail'"));
+
+	MaterialItem GrassItem, IronItem, SnowItem, CobbleItem, WoodItem, LeavesItem;
 
 	GrassItem.MaterialType = EMaterial::Grass;
 	GrassItem.Material = GrassBlockAsset.Object;
-	GrassItem.Thumbnail = GrassTexturehAsset.Object;
+	GrassItem.Thumbnail = GrassTextureAsset.Object;
 
 	IronItem.MaterialType = EMaterial::Iron;
 	IronItem.Material = IronBlockAsset.Object;
-	IronItem.Thumbnail = IronTexturehAsset.Object;
+	IronItem.Thumbnail = IronTextureAsset.Object;
 
 	SnowItem.MaterialType = EMaterial::Snow;
 	SnowItem.Material = SnowBlockAsset.Object;
-	SnowItem.Thumbnail = SnowTexturehAsset.Object;
+	SnowItem.Thumbnail = SnowTextureAsset.Object;
 
 	CobbleItem.MaterialType = EMaterial::Cobble;
 	CobbleItem.Material = CobbleBlockAsset.Object;
-	CobbleItem.Thumbnail = CobbleTexturehAsset.Object;
+	CobbleItem.Thumbnail = CobbleTextureAsset.Object;
+
+	WoodItem.MaterialType = EMaterial::WoodOak;
+	WoodItem.Material = WoodBlockAsset.Object;
+	WoodItem.Thumbnail = WoodTextureAsset.Object;
+
+	LeavesItem.MaterialType = EMaterial::Leaves;
+	LeavesItem.Material = LeavesBlockAsset.Object;
+	LeavesItem.Thumbnail = LeavesTextureAsset.Object;
 
 	Materials.Add(GrassItem);
 	Materials.Add(IronItem);
 	Materials.Add(SnowItem);
 	Materials.Add(CobbleItem);
+	Materials.Add(WoodItem);
+	Materials.Add(LeavesItem);
 }
 
 // Called when the game starts or when spawned
@@ -58,6 +74,12 @@ FName AAssetsManager::ConvertMaterialTypeToString(TEnumAsByte<EMaterial> SearchM
 			break;
 		case EMaterial::Cobble:
 			return "Cobble";
+			break;
+		case EMaterial::WoodOak:
+			return "WoodOak";
+		break;
+		case EMaterial::Leaves:
+			return "Leaves";
 			break;
 		default:
 			return "";

@@ -20,6 +20,8 @@ AWieldable::AWieldable() {
 	MaterialType = EMaterial::NoneMaterial;
 	ToolType = ETool::Unarmed;
 
+	WieldableMesh->SetMobility(EComponentMobility::Movable);
+
 	bIsActive = true;
 }
 
@@ -31,6 +33,10 @@ void AWieldable::BeginPlay() {
 // Called every frame
 void AWieldable::Tick(float DeltaTime) {
 	Super::Tick(DeltaTime);
+
+	FVector GravityAcc = FVector(0.f, 0.f, -1.f) * 5.f;
+
+	WieldableMesh->AddImpulse(GravityAcc);
 
 	FRotator rotation = WieldableMesh->GetComponentRotation();
 	rotation.Yaw += 1.f;

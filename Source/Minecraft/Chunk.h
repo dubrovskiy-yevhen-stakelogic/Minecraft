@@ -9,16 +9,8 @@
 #include "GameFramework/Actor.h"
 #include "Chunk.generated.h"
 
-/*
-0 - snow 
-1 - grass
-2 - iron
-3 - cobble
-*/
-
 UCLASS()
-class MINECRAFT_API AChunk : public AActor
-{
+class MINECRAFT_API AChunk : public AActor {
 	GENERATED_BODY()
 	
 public:	
@@ -56,4 +48,7 @@ private:
 	int FindBlockInInstance(UInstancedStaticMeshComponent *, FVector_NetQuantize);
 
 	ABlock* BreakingBlock;
+
+	// TODO: place in character
+	TMap<FString, bool> ReservedTreePosMap;
 };

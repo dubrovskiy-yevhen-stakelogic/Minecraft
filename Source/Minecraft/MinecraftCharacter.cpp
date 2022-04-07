@@ -409,28 +409,36 @@ int32 AMinecraftCharacter::GetCurrentInventorySlot() {
 }
 
 bool AMinecraftCharacter::AddItemToInventory(AWieldable* Item) {
-	if (Item != NULL) {
-		if (Item->ToolType == ETool::Block) {
-			for (int i = 0; i < Inventory.Num(); i++) {
-				if (Inventory[i] != nullptr) {
-					if (Inventory[i]->MaterialType == Item->MaterialType) {
-						++Item->Counter;
-						return true;
-					}
-				}
+	if (Item == nullptr) {
+		return false;
+	}
+
+	if (Item->ToolType == ETool::Block) {
+		for (int i = 0; i < Inventory.Num(); i++) {
+			if (Inventory[i] != nullptr && Inventory[i]->MaterialType == Item->MaterialType) {
+				++Inventory[i]->Counter;
+				return true;
 			}
-		}
-
-		const int32 AvailableSlot = Inventory.Find(nullptr);
-
-		if (AvailableSlot != INDEX_NONE) {
-			Inventory[AvailableSlot] = Item;
-			UpdateWieldedItem();
-			return true;
 		}
 	}
 
+	const int32 AvailableSlot = Inventory.Find(nullptr);
+
+	if (AvailableSlot != INDEX_NONE) {
+		Inventory[AvailableSlot] = Item;
+		UpdateWieldedItem();
+		return true;
+	}
+
 	return false;
+}
+
+int32 AMinecraftCharacter::GetCurrentInventoryCounter(uint8 Slot) {
+	if (Inventory[Slot] != NULL) {
+		return Inventory[Slot]->Counter;
+	}
+
+	return 0;
 }
 
 UTexture2D* AMinecraftCharacter::GetThumbnailAtInventorySlot(uint8 Slot) {
