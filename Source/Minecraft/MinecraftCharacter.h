@@ -181,6 +181,8 @@ private:
 
 	void Throw();
 
+	void Place();
+
 	void OnHit();
 	void EndHit();
 

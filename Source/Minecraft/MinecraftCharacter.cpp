@@ -1,6 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "MinecraftCharacter.h"
+#include "Minecraft.h"
 #include "Animation/AnimInstance.h"
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
@@ -82,7 +83,7 @@ AMinecraftCharacter::AMinecraftCharacter()
 	// Uncomment the following line to turn motion controllers on by default:
 	//bUsingMotionControllers = true;
 
-	Reach = 250.f;
+	Reach = 300.f;
 }
 
 void AMinecraftCharacter::BeginPlay()
@@ -117,6 +118,8 @@ void AMinecraftCharacter::SetupPlayerInputComponent(class UInputComponent* Playe
 	// Bind jump events
 	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ACharacter::Jump);
 	PlayerInputComponent->BindAction("Jump", IE_Released, this, &ACharacter::StopJumping);
+
+	PlayerInputComponent->BindAction("Place", IE_Pressed, this, &AMinecraftCharacter::Place);
 
 	PlayerInputComponent->BindAction("Throw", IE_Pressed, this, &AMinecraftCharacter::Throw);
 
@@ -479,6 +482,17 @@ AWieldable* AMinecraftCharacter::GetCurrentWieldedItem() {
 	}
 
 	return NULL;
+}
+
+void AMinecraftCharacter::Place() {
+	AWieldable* CurrentItem = GetCurrentWieldedItem();
+
+	if (CurrentItem == nullptr || CurrentChunk == nullptr || CurrentItem->ToolType != ETool::Block) {
+		return;
+	}
+
+	CurrentChunk->PlaceBlock(HitLocation, CurrentItem->MaterialType);
+	// CurrentChunk->FindBlock(HitLocation);
 }
 
 void AMinecraftCharacter::Throw() {

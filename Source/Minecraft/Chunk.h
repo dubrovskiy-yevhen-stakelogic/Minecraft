@@ -32,11 +32,14 @@ public:
 	void DestroyTMPBlock();
 
 	void OnBlockDestroyed();
+	void PlaceBlock(FVector HitLocation, TEnumAsByte<EMaterial> MaterialType);
 
 private:
 	int NUM = 16;
 	int DEPTH = 2;
 	float VOXEL_SIZE = 100;
+
+	AAssetsManager* AssetsManager;
 
 	FVector BrakeLocation;
 	int BrakeInstanceInd;

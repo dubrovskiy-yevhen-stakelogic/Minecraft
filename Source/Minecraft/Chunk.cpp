@@ -17,7 +17,7 @@ AChunk::AChunk() {
 
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> UnitBlockAsset(TEXT("StaticMesh'/Game/Assets/Meshes/Blocks/SM_UnitBlock.SM_UnitBlock'"));
 
-	AAssetsManager* AssetsManager = NewObject<AAssetsManager>(this, TEXT("AssetsManager"));
+	AssetsManager = NewObject<AAssetsManager>(this, TEXT("AssetsManager"));
 
 	EMaterial MaterialTypes[6] = {  EMaterial::Snow,  EMaterial::Grass,  EMaterial::Iron,  EMaterial::Cobble, EMaterial::WoodOak, EMaterial::Leaves };
 	int AssetsLength = sizeof MaterialTypes / sizeof MaterialTypes[0];
@@ -98,6 +98,54 @@ int AChunk::FindBlockInInstance(UInstancedStaticMeshComponent * InstanceComponen
     }
 
 	return -1;
+}
+
+// вверх вних это z
+// вперед назад это x
+// влево вправо это y
+
+void AChunk::PlaceBlock(FVector HitLocation, TEnumAsByte<EMaterial> MaterialType) {
+	FVector Location = GetActorLocation();
+	int ind = -1;
+
+	for (int i = 0; i < Instances.Num(); i++) {
+		ind = FindBlockInInstance(Instances[i], HitLocation);
+		if (ind != -1) {
+			FTransform Out;
+			Instances[i]->GetInstanceTransform(ind, Out);
+
+			FVector MeshLocation = Out.GetLocation() + Location + FVector(VOXEL_SIZE / -2, VOXEL_SIZE / -2, VOXEL_SIZE / -2);
+
+			FVector PlaceLocation = Out.GetLocation();
+
+			if (MeshLocation.X == HitLocation.X) {
+				PlaceLocation += FVector(-VOXEL_SIZE, 0, 0);
+			} else if (MeshLocation.X == HitLocation.X - VOXEL_SIZE) {
+				PlaceLocation += FVector(VOXEL_SIZE, 0, 0);
+			} else if (MeshLocation.Y == HitLocation.Y) {
+				PlaceLocation += FVector(0, -VOXEL_SIZE, 0);
+			} else if (MeshLocation.Y == HitLocation.Y - VOXEL_SIZE) {
+				PlaceLocation += FVector(0, VOXEL_SIZE, 0);
+			} else if (MeshLocation.Z == HitLocation.Z) {
+				PlaceLocation += FVector(0, 0, -VOXEL_SIZE);
+			} else if (MeshLocation.Z == HitLocation.Z - VOXEL_SIZE) {
+				PlaceLocation += FVector(0, 0, VOXEL_SIZE);
+			} else {
+				return;
+			}
+
+			for (int j = 0; j < Instances.Num(); j++) {
+				if (AssetsManager->GetTypeByMaterial(Instances[j]->GetMaterial(0)->GetMaterial()) == MaterialType) {
+					FTransform InstanceTransform;
+					InstanceTransform.SetLocation(PlaceLocation);
+					Instances[j]->AddInstance(InstanceTransform);
+					return;
+				}
+			}
+
+			return;
+		}
+	}
 }
 
 void AChunk::FindBlock(FVector_NetQuantize HitLocation) {
