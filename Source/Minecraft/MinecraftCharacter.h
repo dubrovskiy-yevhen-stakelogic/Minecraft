@@ -16,6 +16,11 @@ class UMotionControllerComponent;
 class UAnimMontage;
 class USoundBase;
 
+struct ChunkEntry {
+	AChunk* Chunk;
+	FVector ChunkLoc;
+};
+
 UCLASS(config=Game)
 class AMinecraftCharacter : public ACharacter
 {
@@ -53,7 +58,7 @@ public:
 	AMinecraftCharacter();
 
 protected:
-	virtual void BeginPlay();
+	virtual void BeginPlay() override;
 
 	virtual void Tick(float DeltaTime) override;
 
@@ -88,7 +93,7 @@ public:
 
 	/* Get the current inventory slot for the hud  */
 	UFUNCTION(BlueprintPure, Category = HUD)
-	int32 GetCurrentInventorySlot();
+	int32 GetCurrentInventorySlot() const;
 
 	/* Get the current inventory slot for the hud  */
 	UFUNCTION(BlueprintPure, Category = Inventory)
@@ -138,7 +143,6 @@ protected:
 	};
 	void BeginTouch(const ETouchIndex::Type FingerIndex, const FVector Location);
 	void EndTouch(const ETouchIndex::Type FingerIndex, const FVector Location);
-	void TouchUpdate(const ETouchIndex::Type FingerIndex, const FVector Location);
 	TouchData	TouchItem;
 	
 protected:
@@ -155,13 +159,16 @@ protected:
 	bool EnableTouchscreenMovement(UInputComponent* InputComponent);
 
 private:
-	const int RENDER_RANGE_TILES = 10;
+	FTerrainGeneratorWorker* FWorker;
+
+	// void RenderVisibleChunks(TArray<ChunkEntry> VisibleChunks);
+	const int RENDER_RANGE_TILES = 6;
 	// const int RENDER_RANGE = 500;
 
 	void DestroyChunksOutsideRenderRange();
 
 	void SpawnNewChunks();
-	FIntVector GetPlayerChunkCoordinates();
+	FIntVector GetPlayerChunkCoordinates() const;
 
 	const int32 NUM_OF_INVENTORY_SLOTS = 10;
 
@@ -173,6 +180,7 @@ private:
 
 	void UpdateWieldedItem();
 
+	TMap<FString, BlockInfo>* Blocks;
 
 	AWieldable* GetCurrentWieldedItem();
 
@@ -180,22 +188,19 @@ private:
 	void MoveDownInventorySlot();
 
 	void Throw();
-
 	void Place();
-
 	void OnHit();
 	void EndHit();
 
-	void PlayHitAnim();
+	void PlayHitAnim() const;
 
 	/* */
 	void CheckForBlocks();
 
-	void BreakBlock();
+	void BreakBlock() const;
 
+	UPROPERTY()
 	AChunk* CurrentChunk;
-
-	ABlock* CurrentBlock;
 	FVector_NetQuantize HitLocation;
 
 	float Reach;
@@ -206,8 +211,8 @@ private:
 	UPROPERTY(EditAnywhere)
 	TArray<AWieldable*> Inventory;
 
-	TArray<AChunk*> VisibleChunks;
-	TMap<FString, AChunk*> SpawnedChunksMap;
+	TArray<ChunkEntry> VisibleChunks;
+	TMap<FString, AChunk*>* SpawnedChunksMap;
 public:
 	/** Returns Mesh1P subobject **/
 	USkeletalMeshComponent* GetMesh1P() const { return Mesh1P; }

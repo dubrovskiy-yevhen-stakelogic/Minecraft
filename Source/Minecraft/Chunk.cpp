@@ -3,26 +3,32 @@
 
 #include "Chunk.h"
 #include "TreeGenerator.h"
-#include "SimplexNoise/SimplexNoiseBPLibrary.h"
+
+TMap<FString, BlockInfo> * AChunk::Blocks;
+FTerrainGeneratorWorker* AChunk::FWorker;
+TMap<FString, AChunk*> * AChunk::SpawnedChunksMap;
 
 // Sets default values
 AChunk::AChunk() {
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = false;
 
+	ChunkBlocks = new TMap<FString, BlockInfo>();
+	VisibleBlocks = new TMap<FString, bool>();
+	ReservedTreePosMap = new TMap<FString, bool>();
+
 	SetActorEnableCollision(true);
 
 	RootComponent = CreateDefaultSubobject<USceneComponent>("SceneComponent");
-	BreakingBlock = NewObject<ABlock>(this, TEXT("Breaking block"));
+	BreakingBlock = CreateDefaultSubobject<ABlock>("Breaking block");
+	AssetsManager = CreateDefaultSubobject<AAssetsManager>("AssetsManager");
 
-	static ConstructorHelpers::FObjectFinder<UStaticMesh> UnitBlockAsset(TEXT("StaticMesh'/Game/Assets/Meshes/Blocks/SM_UnitBlock.SM_UnitBlock'"));
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> UnitBlockAsset(TEXT("StaticMesh'/Game/Assets/Meshes/Blocks/SM_UnitBlock.SM_UnitBlock'"));	
 
-	AssetsManager = NewObject<AAssetsManager>(this, TEXT("AssetsManager"));
+	constexpr  EMaterial MaterialTypes[6] = {  EMaterial::Snow,  EMaterial::Grass,  EMaterial::Iron,  EMaterial::Cobble, EMaterial::WoodOak, EMaterial::Leaves };
+	constexpr  int AssetsLength = sizeof MaterialTypes / sizeof MaterialTypes[0];
 
-	EMaterial MaterialTypes[6] = {  EMaterial::Snow,  EMaterial::Grass,  EMaterial::Iron,  EMaterial::Cobble, EMaterial::WoodOak, EMaterial::Leaves };
-	int AssetsLength = sizeof MaterialTypes / sizeof MaterialTypes[0];
-
-	UStaticMeshComponent* BreakingBlockMesh = NewObject<UStaticMeshComponent>(this, TEXT("Breaking mesh block"));
+	UStaticMeshComponent* BreakingBlockMesh = CreateDefaultSubobject<UStaticMeshComponent>("Breaking mesh block");
 
 	BreakingBlock->SetStaticMesh(BreakingBlockMesh);
 	BreakingBlock->SetChunk(this);
@@ -30,67 +36,47 @@ AChunk::AChunk() {
 	BreakingBlock->Hide();
 
 	for (int i = 0; i < AssetsLength; i++) {
-		Instances.Add(NewObject<UInstancedStaticMeshComponent>(this, AssetsManager->ConvertMaterialTypeToString(MaterialTypes[i])));
+		Instances.Add(CreateDefaultSubobject<UInstancedStaticMeshComponent>(AssetsManager->ConvertMaterialTypeToString(MaterialTypes[i])));
 		Instances[i]->SetStaticMesh(UnitBlockAsset.Object);
 		Instances[i]->SetMaterial(0, AssetsManager->GetMaterialByType(MaterialTypes[i]));
 		Instances[i]->AttachToComponent(this->RootComponent, FAttachmentTransformRules::KeepRelativeTransform);
 	}
 
+	AssetsManager->AttachToComponent(this->RootComponent, FAttachmentTransformRules::KeepRelativeTransform);
+	BreakingBlock->AttachToComponent(this->RootComponent, FAttachmentTransformRules::KeepRelativeTransform);
 	BreakingBlockMesh->AttachToComponent(this->RootComponent, FAttachmentTransformRules::KeepRelativeTransform);
 }
+
 
 // Called when the game starts or when spawned
 void AChunk::BeginPlay() {
 	Super::BeginPlay();
 
-	FVector Location = GetActorLocation();
+	// MUCH OPTIMIZED
+	const FVector Location = GetActorLocation();
 
-	float NoiseDensity =  0.00025;
-	int NoiseScale = 6;
-
-	for (int LoopX = 0; LoopX < NUM; LoopX++) {
-		for (int LoopY = 0; LoopY < NUM; LoopY++) {
-			FTransform InstanceTransform;
-
-			float X = LoopX * VOXEL_SIZE;
-			float Y = LoopY * VOXEL_SIZE;
-
-			float InitZ = (FMath::Floor(USimplexNoiseBPLibrary::SimplexNoise2D(X + Location.X, Y + Location.Y, NoiseDensity) * NoiseScale) ) * VOXEL_SIZE;
-
-			for (int currentDepth = 0; currentDepth < DEPTH; currentDepth++) { 
-				float Z = InitZ - currentDepth * VOXEL_SIZE;
-
-				InstanceTransform.SetLocation(FVector(X, Y, Z));
-
-				int z = FMath::RoundToInt(Z / VOXEL_SIZE);
-
-				if (currentDepth == 0) {
-					// grass
-					int TreePosibility = FMath::RandRange(0, 100);
-
-					if (TreePosibility == 0) {
-						TreeGenerator::GenerateTree(FVector(X, Y, Z), ReservedTreePosMap, VOXEL_SIZE, Instances[4], Instances[5]);
-					}
-
-					Instances[1]->AddInstance(InstanceTransform);
-				} else {
-					// cobble
-					Instances[3]->AddInstance(InstanceTransform);
-				}
-			}
-		}
-	}
+	TreeGenerator::GenerateChunk(
+		Location,
+		NUM,
+		VOXEL_SIZE,
+		DEPTH,
+		Instances,
+		ReservedTreePosMap,
+		FWorker,
+		VisibleBlocks,
+		ChunkBlocks
+	);
 }
 
-int AChunk::FindBlockInInstance(UInstancedStaticMeshComponent * InstanceComponent, FVector_NetQuantize HitLocation) {
-	FVector Location = GetActorLocation();
+int AChunk::FindBlockInInstance(const UInstancedStaticMeshComponent * InstanceComponent, FVector_NetQuantize HitLocation) const {
+	const FVector Location = GetActorLocation();
 
 	for (int i = InstanceComponent->GetInstanceCount() - 1; i >= 0; i--) {
 		//Save the transform of current Instance.
 		FTransform Out;
 		InstanceComponent->GetInstanceTransform(i, Out);
 
-		FVector MeshLocation = Out.GetLocation() + Location + FVector(VOXEL_SIZE / -2, VOXEL_SIZE / -2, VOXEL_SIZE / -2);
+		const FVector MeshLocation = Out.GetLocation() + Location + FVector(VOXEL_SIZE / -2, VOXEL_SIZE / -2, VOXEL_SIZE / -2);
 
 		if (IsInBox(MeshLocation, HitLocation)) {
 			return i;
@@ -100,21 +86,16 @@ int AChunk::FindBlockInInstance(UInstancedStaticMeshComponent * InstanceComponen
 	return -1;
 }
 
-// вверх вних это z
-// вперед назад это x
-// влево вправо это y
-
 void AChunk::PlaceBlock(FVector HitLocation, TEnumAsByte<EMaterial> MaterialType) {
-	FVector Location = GetActorLocation();
-	int ind = -1;
+	const FVector Location = GetActorLocation();
 
 	for (int i = 0; i < Instances.Num(); i++) {
-		ind = FindBlockInInstance(Instances[i], HitLocation);
-		if (ind != -1) {
+		const int Ind = FindBlockInInstance(Instances[i], HitLocation);
+		if (Ind != -1) {
 			FTransform Out;
-			Instances[i]->GetInstanceTransform(ind, Out);
+			Instances[i]->GetInstanceTransform(Ind, Out);
 
-			FVector MeshLocation = Out.GetLocation() + Location + FVector(VOXEL_SIZE / -2, VOXEL_SIZE / -2, VOXEL_SIZE / -2);
+			const FVector MeshLocation = Out.GetLocation() + Location + FVector(VOXEL_SIZE / -2, VOXEL_SIZE / -2, VOXEL_SIZE / -2);
 
 			FVector PlaceLocation = Out.GetLocation();
 
@@ -149,15 +130,15 @@ void AChunk::PlaceBlock(FVector HitLocation, TEnumAsByte<EMaterial> MaterialType
 }
 
 void AChunk::FindBlock(FVector_NetQuantize HitLocation) {
-	FVector Location = GetActorLocation();
-	int ind = -1;
+	const FVector Location = GetActorLocation();
 
 	for (int i = 0; i < Instances.Num(); i++) {
-		ind = FindBlockInInstance(Instances[i], HitLocation);
-		if (ind != -1) {
+		const int Ind = FindBlockInInstance(Instances[i], HitLocation);
+		if (Ind != -1) {
+
 			FTransform Out;
-			Instances[i]->GetInstanceTransform(ind, Out);
-			Instances[i]->RemoveInstance(ind);
+			Instances[i]->GetInstanceTransform(Ind, Out);
+			Instances[i]->RemoveInstance(Ind);
 			BrakeLocation = Out.GetLocation();
 			BrakeInstanceInd = i;
 
@@ -169,8 +150,100 @@ void AChunk::FindBlock(FVector_NetQuantize HitLocation) {
 	}
 }
 
+void AChunk::ShowBlock(FVector BlockPosition) {
+	if (!ChunkBlocks->Contains(BlockPosition.ToString())) {
+		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, "Block not found!");
+		return;	
+	}
+
+	if (VisibleBlocks->Contains(BlockPosition.ToString())) {
+		return;
+	}
+
+	const FVector Location = GetActorLocation();
+
+	FTransform InstanceTransform;
+	InstanceTransform.SetLocation(BlockPosition - Location);
+	Instances[3]->AddInstance(InstanceTransform);
+
+	VisibleBlocks->Add(BlockPosition.ToString(), true);
+}
+
 void AChunk::OnBlockDestroyed() {
 	BrakeInstanceInd = -1;
+
+	const FVector Location = GetActorLocation();
+	const FVector MeshLocation = BrakeLocation + Location;
+
+	if (!ChunkBlocks->Contains(MeshLocation.ToString())) {
+		return;	
+	}
+
+	ChunkBlocks->Remove(MeshLocation.ToString());
+	VisibleBlocks->Remove(MeshLocation.ToString());
+
+	const FVector NeighborsPos[6] = { 
+		MeshLocation + FVector(VOXEL_SIZE, 0, 0),
+		MeshLocation + FVector(-VOXEL_SIZE, 0, 0),
+		MeshLocation + FVector(0, VOXEL_SIZE, 0),
+		MeshLocation + FVector(0, -VOXEL_SIZE, 0),
+		MeshLocation + FVector(0, 0, VOXEL_SIZE),
+		MeshLocation + FVector(0, 0, -VOXEL_SIZE),
+	};
+
+	const FString NeighborsChunksKeys[4] = {
+		(Location + FVector(-AChunk::CHUNK_SIZE_XY, 0, 0)).ToString(),
+		(Location + FVector(AChunk::CHUNK_SIZE_XY, 0, 0)).ToString(),
+		(Location + FVector(0, -AChunk::CHUNK_SIZE_XY, 0)).ToString(),
+		(Location + FVector(0, AChunk::CHUNK_SIZE_XY, 0)).ToString(),
+	};
+
+	for (int i = 0; i < 6; i++) {
+		if (NeighborsPos[i].X < Location.X) {
+			GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, "BOTTOM OUT OF BOUND!!!");
+
+			AChunk* NeighborChunk = SpawnedChunksMap->operator[](NeighborsChunksKeys[0]);
+			
+			if (NeighborChunk != nullptr) {
+				NeighborChunk->ShowBlock(NeighborsPos[i]);
+			}
+			
+			continue;
+		} else if (NeighborsPos[i].X == Location.X + CHUNK_SIZE_XY) {
+			GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, "TOP OUT OF BOUND!!!");
+			AChunk* NeighborChunk = SpawnedChunksMap->operator[](NeighborsChunksKeys[1]);
+			
+			if (NeighborChunk != nullptr) {
+				NeighborChunk->ShowBlock(NeighborsPos[i]);
+			}
+			
+			continue;
+		} else if (NeighborsPos[i].Y < Location.Y) {
+			GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, "LEFT OUT OF BOUND!!!");
+			AChunk* NeighborChunk = SpawnedChunksMap->operator[](NeighborsChunksKeys[2]);
+			
+			if (NeighborChunk != nullptr) {
+				NeighborChunk->ShowBlock(NeighborsPos[i]);
+			}
+			continue;
+		} else if (NeighborsPos[i].Y == Location.Y + CHUNK_SIZE_XY) {
+			GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, "RIGHT OUT OF BOUND!!!");
+			AChunk* NeighborChunk = SpawnedChunksMap->operator[](NeighborsChunksKeys[3]);
+			
+			if (NeighborChunk != nullptr) {
+				NeighborChunk->ShowBlock(NeighborsPos[i]);
+			}
+			continue;
+		}
+
+		if (ChunkBlocks->Contains(NeighborsPos[i].ToString()) && !VisibleBlocks->Contains(NeighborsPos[i].ToString())) {
+			FTransform InstanceTransform;
+			InstanceTransform.SetLocation(NeighborsPos[i] - Location);
+			Instances[3]->AddInstance(InstanceTransform);
+
+			VisibleBlocks->Add(NeighborsPos[i].ToString(), true);
+		}
+	}
 }
 
 void AChunk::ResetBlock() {
@@ -186,7 +259,7 @@ void AChunk::ResetBlock() {
 	BrakeInstanceInd = -1;
 }
 
-void AChunk::Break() {
+void AChunk::Break() const {
 	if (BrakeInstanceInd == -1) {
 		return;
 	}
@@ -199,7 +272,7 @@ void AChunk::SetVisibility(bool IsVisible) {
 	SetActorEnableCollision(IsVisible);
 }
 
-bool AChunk::IsInBox(FVector BoxLocation, FVector_NetQuantize HitLocation) {
+bool AChunk::IsInBox(const FVector BoxLocation, const FVector_NetQuantize HitLocation) const {
 	if (HitLocation.X < BoxLocation.X || HitLocation.X > (BoxLocation.X + VOXEL_SIZE)) {
 		return false;
 	}

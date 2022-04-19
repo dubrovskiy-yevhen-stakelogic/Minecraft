@@ -22,7 +22,7 @@ class AMinecraftGameMode : public AGameModeBase
 public:
 	AMinecraftGameMode();
 
-	TEnumAsByte<EHUDState> GetHUDState();
+	TEnumAsByte<EHUDState> GetHUDState() const;
 
 	void ApplyHUDChanges();
 
@@ -45,6 +45,7 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Blueprint Widgets", Meta = (BlueprintProtected = "true"))
 	TSubclassOf<class UUserWidget> CraftMenuHUDClass;
 
+	UPROPERTY()
 	class UUserWidget* CurrentWidget;
 
 };

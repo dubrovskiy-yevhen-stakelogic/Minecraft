@@ -6,6 +6,8 @@
 AAssetsManager::AAssetsManager() {
 	PrimaryActorTick.bCanEverTick = false;
 
+	static ConstructorHelpers::FObjectFinder<USkeletalMesh> GrassBlockSkeletalMeshAsset(TEXT("SkeletalMesh'/Game/Assets/Meshes/Blocks/SK_GrassBlock.SK_GrassBlock'"));
+
 	static ConstructorHelpers::FObjectFinder<UMaterial> GrassBlockAsset(TEXT("Material'/Game/Assets/Materials/M_Grass.M_Grass'"));
 	static ConstructorHelpers::FObjectFinder<UMaterial> IronBlockAsset(TEXT("Material'/Game/Assets/Materials/M_Iron.M_Iron'"));
 	static ConstructorHelpers::FObjectFinder<UMaterial> SnowBlockAsset(TEXT("Material'/Game/Assets/Materials/M_Snow.M_Snow'"));
@@ -21,6 +23,8 @@ AAssetsManager::AAssetsManager() {
 
 	static ConstructorHelpers::FObjectFinder<UTexture2D> LeavesTextureAsset(TEXT("Texture2D'/Game/Textures/T_Ground_GrassThumbnail.T_Ground_GrassThumbnail'"));
 	static ConstructorHelpers::FObjectFinder<UTexture2D> WoodTextureAsset(TEXT("Texture2D'/Game/Textures/T_Wood_WalnutThumbnail.T_Wood_WalnutThumbnail'"));
+
+	SkeletalMeshAsset = GrassBlockSkeletalMeshAsset.Object;
 
 	MaterialItem GrassItem, IronItem, SnowItem, CobbleItem, WoodItem, LeavesItem;
 
@@ -65,28 +69,22 @@ FName AAssetsManager::ConvertMaterialTypeToString(TEnumAsByte<EMaterial> SearchM
 	switch(SearchMaterialType) {
 		case EMaterial::Grass:
 			return "Grass";
-			break;
 		case EMaterial::Snow:
 			return "Snow";
-			break;
 		case EMaterial::Iron:
 			return "Iron";
-			break;
 		case EMaterial::Cobble:
 			return "Cobble";
-			break;
 		case EMaterial::WoodOak:
 			return "WoodOak";
-		break;
 		case EMaterial::Leaves:
 			return "Leaves";
-			break;
 		default:
 			return "";
 	}
 }
 
-TEnumAsByte<EMaterial> AAssetsManager::GetTypeByMaterial(UMaterial* SearchMaterial) {
+TEnumAsByte<EMaterial> AAssetsManager::GetTypeByMaterial(const UMaterial* SearchMaterial) {
 	for (int i = 0; i < Materials.Num(); i++) {
 		if (Materials[i].Material == SearchMaterial) {
 			return Materials[i].MaterialType;
@@ -106,7 +104,7 @@ UMaterial* AAssetsManager::GetMaterialByType(TEnumAsByte<EMaterial> SearchMateri
 	return Materials[0].Material;
 }
 
-UTexture2D* AAssetsManager::GetThumbnailByMaterial(UMaterial* SearchMaterial) {
+UTexture2D* AAssetsManager::GetThumbnailByMaterial(const UMaterial* SearchMaterial) {
 	for (int i = 0; i < Materials.Num(); i++) {
 		if (Materials[i].Material == SearchMaterial) {
 			return Materials[i].Thumbnail;

@@ -22,16 +22,19 @@ public:
 	// Sets default values for this actor's properties
 	AAssetsManager();
 
+
+	UPROPERTY()
+	USkeletalMesh* SkeletalMeshAsset;
+
+	TArray<MaterialItem> Materials;
+
+	TEnumAsByte<EMaterial> GetTypeByMaterial(const UMaterial*);
+	UMaterial* GetMaterialByType(TEnumAsByte<EMaterial>);
+	static FName ConvertMaterialTypeToString(TEnumAsByte<EMaterial>);
+
+	UTexture2D* GetThumbnailByMaterial(const UMaterial*);
+	
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
-
-public:	
-	TArray<MaterialItem> Materials;
-
-	TEnumAsByte<EMaterial> GetTypeByMaterial(UMaterial*);
-	UMaterial* GetMaterialByType(TEnumAsByte<EMaterial>);
-	FName ConvertMaterialTypeToString(TEnumAsByte<EMaterial>);
-
-	UTexture2D* GetThumbnailByMaterial(UMaterial*);
 };

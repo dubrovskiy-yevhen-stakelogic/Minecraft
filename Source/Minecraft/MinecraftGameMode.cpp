@@ -46,7 +46,7 @@ void AMinecraftGameMode::ApplyHUDChanges() {
 	}
 }
 
-TEnumAsByte<EHUDState> AMinecraftGameMode::GetHUDState() {
+TEnumAsByte<EHUDState> AMinecraftGameMode::GetHUDState() const {
 	return HUDState;
 }
 
@@ -56,8 +56,6 @@ void AMinecraftGameMode::ChangeHUDState(TEnumAsByte<EHUDState> NewState) {
 }
 
 bool AMinecraftGameMode::ApplyHUD(TSubclassOf<class UUserWidget> WidgetToApply, bool ShowMouseCursor, bool EnableClickEvents) {
-	AMinecraftCharacter* MyCharacter = Cast<AMinecraftCharacter>(UGameplayStatics::GetPlayerCharacter(this, 0));
-
 	APlayerController* MyController = GetWorld()->GetFirstPlayerController();
 
 	if (WidgetToApply != nullptr) {

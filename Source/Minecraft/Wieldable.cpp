@@ -34,7 +34,7 @@ void AWieldable::BeginPlay() {
 void AWieldable::Tick(float DeltaTime) {
 	Super::Tick(DeltaTime);
 
-	FVector GravityAcc = FVector(0.f, 0.f, -1.f) * 5.f;
+	const FVector GravityAcc = FVector(0.f, 0.f, -1.f) * 5.f;
 
 	WieldableMesh->AddImpulse(GravityAcc);
 

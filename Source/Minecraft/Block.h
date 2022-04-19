@@ -24,23 +24,20 @@ protected:
 
 public:
 	/* mesh of breaking block */
+	UPROPERTY()
 	UStaticMeshComponent* SM_Block;
 
 	/* Chunk where we will put block */
+	UPROPERTY()
 	AActor* Chunk;
-	USkeletalMesh* SkeletalMeshAsset;
 
 	void SetLocation(FVector);	
 
-	UPROPERTY(EditDefaultsOnly)
 	float Resistance;
-
-	UPROPERTY(BlueprintReadWrite)
 	float BreakingStage;
 
-
 	void SetStaticMesh(UStaticMeshComponent*);
-	UStaticMeshComponent* GetStaticMesh();
+	UStaticMeshComponent* GetStaticMesh() const;
 
 	void Break();
 	void ResetBlock();
@@ -48,11 +45,8 @@ public:
 	void Hide();
 	void Place(UMaterialInterface* Material, FVector Location);
 
-	void Attach(class AActor *owner);
-
 	void SetChunk(AActor*);
 
-	void OnBroken(bool HasRequiredPickaxe);
-
+	UPROPERTY()
 	AAssetsManager* AssetsManager;
 };

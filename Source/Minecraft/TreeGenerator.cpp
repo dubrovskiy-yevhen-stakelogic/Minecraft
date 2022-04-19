@@ -2,27 +2,29 @@
 
 
 #include "TreeGenerator.h"
+#include "SimplexNoise/SimplexNoiseBPLibrary.h"
 
-TreeGenerator::TreeGenerator()
-{
-}
+TreeGenerator::TreeGenerator() { }
 
-void TreeGenerator::GenerateTree(FVector Center, 
-TMap<FString, bool> &ReservedTreePosMap, 
-int VOXEL_SIZE, UInstancedStaticMeshComponent* TreeTrunkInstance, UInstancedStaticMeshComponent* LeavesInstance) {
+void TreeGenerator::GenerateTree(
+	FVector Center, 
+	TMap<FString, bool> *ReservedTreePosMap, 
+	int VOXEL_SIZE, UInstancedStaticMeshComponent* TreeTrunkInstance,
+	UInstancedStaticMeshComponent* LeavesInstance
+) {
     	// generate tree
-	if (ReservedTreePosMap.Contains(FVector(Center.X, Center.Y, 0).ToString())) {
+	if (ReservedTreePosMap->Contains(FVector(Center.X, Center.Y, 0).ToString())) {
 		return;
 	}
 
-	float StartX = Center.X - VOXEL_SIZE * 5;
-	float StartY = Center.Y - VOXEL_SIZE * 5;
+	const float StartX = Center.X - VOXEL_SIZE * 5;
+	const float StartY = Center.Y - VOXEL_SIZE * 5;
 
 	for (int i = 0; i < 10; i++) {
-		float X = StartX + i * VOXEL_SIZE;
+		const float X = StartX + i * VOXEL_SIZE;
 		for (int j = 0; j < 10; j++) {
-			float Y = StartY + j * VOXEL_SIZE;
-			ReservedTreePosMap.Add(FVector(X, Y, 0).ToString());
+			const float Y = StartY + j * VOXEL_SIZE;
+			ReservedTreePosMap->Add(FVector(X, Y, 0).ToString());
 		}
 	}
 
@@ -33,7 +35,6 @@ int VOXEL_SIZE, UInstancedStaticMeshComponent* TreeTrunkInstance, UInstancedStat
 	// first level 
 
 	for (int i = 0; i < 5; i++) {
-		// ствол дерева
 		FTransform TreeInstanceTransform;
 		TreeInstanceTransform.SetLocation(FVector(TreeX, TreeY, TreeZ));
 		TreeZ += VOXEL_SIZE;
@@ -45,10 +46,10 @@ int VOXEL_SIZE, UInstancedStaticMeshComponent* TreeTrunkInstance, UInstancedStat
 
 	// first level
 	for (int g = 0; g < 5; g++) {
-		float LocalTreeX = TreeX + VOXEL_SIZE * g;
+		const float LocalTreeX = TreeX + VOXEL_SIZE * g;
 
 		for (int h = 0; h < 5; h++) {
-			float LocalTreeY = TreeY + VOXEL_SIZE * h;
+			const float LocalTreeY = TreeY + VOXEL_SIZE * h;
 
 			FTransform TreeInstanceTransform;
 			TreeInstanceTransform.SetLocation(FVector(LocalTreeX, LocalTreeY, TreeZ));
@@ -62,14 +63,73 @@ int VOXEL_SIZE, UInstancedStaticMeshComponent* TreeTrunkInstance, UInstancedStat
 
 	// second lvl
 	for (int g = 0; g < 3; g++) {
-		float LocalTreeX = TreeX + VOXEL_SIZE * g;
+		const float LocalTreeX = TreeX + VOXEL_SIZE * g;
 
 		for (int h = 0; h < 3; h++) {
-			float LocalTreeY = TreeY + VOXEL_SIZE * h;
+			const float LocalTreeY = TreeY + VOXEL_SIZE * h;
 
 			FTransform TreeInstanceTransform;
 			TreeInstanceTransform.SetLocation(FVector(LocalTreeX, LocalTreeY, TreeZ));
 			LeavesInstance->AddInstance(TreeInstanceTransform);
 		}
 	}
+}
+
+void TreeGenerator::GenerateChunk(
+	FVector Location,
+	int NUM,
+	int VOXEL_SIZE,
+	int DEPTH,
+	TArray<UInstancedStaticMeshComponent*> Instances,
+	TMap<FString, bool> *ReservedTreePosMap,
+	FTerrainGeneratorWorker* FWorker,
+	TMap<FString, bool>* VisibleBlocks,
+	TMap<FString, BlockInfo> *ChunkBlocks
+) {
+	TArray<float> InitZPositions;
+
+	for (int LoopX = 0; LoopX < NUM; LoopX++) {
+		for (int LoopY = 0; LoopY < NUM; LoopY++) {
+			constexpr float NoiseDensity =  0.00025;
+			constexpr int NoiseScale = 6;
+			
+			const float X = LoopX * VOXEL_SIZE;
+			const float Y = LoopY * VOXEL_SIZE;
+
+			float InitZ = (FMath::Floor(USimplexNoiseBPLibrary::SimplexNoise2D(X + Location.X, Y + Location.Y, NoiseDensity) * NoiseScale) ) * VOXEL_SIZE;
+
+			InitZPositions.Add(InitZ);
+
+			float Z = InitZ;
+			// int z = FMath::RoundToInt(Z / VOXEL_SIZE);
+
+			BlockInfo CurrentBlockInfo;
+			CurrentBlockInfo.Neighbors = 0;
+			CurrentBlockInfo.Position = Location + FVector(X, Y, Z);
+			CurrentBlockInfo.IsBottom = false;
+
+			// grass
+			const bool IsShouldPlaceTree = FMath::RandRange(0, 100) == 0;
+
+			if (IsShouldPlaceTree) {
+				GenerateTree(FVector(X, Y, Z), ReservedTreePosMap, VOXEL_SIZE, Instances[4], Instances[5]);
+			}
+
+			CurrentBlockInfo.MaterialType = EMaterial::Grass;
+
+			FTransform InstanceTransform;
+			InstanceTransform.SetLocation(FVector(X, Y, Z));
+			Instances[1]->AddInstance(InstanceTransform);
+			
+			ChunkBlocks->Add(CurrentBlockInfo.Position.ToString(), CurrentBlockInfo);
+			VisibleBlocks->Add(CurrentBlockInfo.Position.ToString(), true);
+
+			// TODO: do not forgot about trees
+			// Blocks->Add(CurrentBlockInfo.Position.ToString(), CurrentBlockInfo);
+		}
+	}
+
+	// GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, "PassedLocationToWorker=" + Location.ToString());
+
+	FWorker->SetWorkerData(InitZPositions, DEPTH, NUM, VOXEL_SIZE, Location, ChunkBlocks);
 }

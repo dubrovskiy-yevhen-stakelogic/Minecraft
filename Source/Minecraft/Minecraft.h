@@ -28,3 +28,15 @@ enum ETool {
 	Sword,
 	Block
 };
+
+struct BlockInfo {
+	int Neighbors;
+	FVector Position;
+	EMaterial MaterialType;
+	bool IsBottom;
+};
+
+struct VisibleBlock  {
+	FVector Position;
+	EMaterial MaterialType;
+};

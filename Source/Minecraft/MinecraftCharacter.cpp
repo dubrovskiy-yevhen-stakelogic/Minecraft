@@ -8,7 +8,6 @@
 #include "Components/InputComponent.h"
 #include "GameFramework/InputSettings.h"
 #include "HeadMountedDisplayFunctionLibrary.h"
-#include "Kismet/GameplayStatics.h"
 #include "MotionControllerComponent.h"
 #include "XRMotionControllerBase.h" // for FXRMotionControllerBase::RightHandSourceId
 
@@ -17,8 +16,8 @@ DEFINE_LOG_CATEGORY_STATIC(LogFPChar, Warning, All);
 //////////////////////////////////////////////////////////////////////////
 // AMinecraftCharacter
 
-AMinecraftCharacter::AMinecraftCharacter()
-{
+AMinecraftCharacter::AMinecraftCharacter() {
+	FWorker = new FTerrainGeneratorWorker();
 	// Set size for collision capsule
 	GetCapsuleComponent()->InitCapsuleSize(55.f, 96.0f);
 
@@ -84,12 +83,18 @@ AMinecraftCharacter::AMinecraftCharacter()
 	//bUsingMotionControllers = true;
 
 	Reach = 300.f;
+
+	Blocks = new TMap<FString, BlockInfo>();
+	SpawnedChunksMap = new TMap<FString, AChunk*>();
 }
 
-void AMinecraftCharacter::BeginPlay()
-{
+void AMinecraftCharacter::BeginPlay() {
 	// Call the base class  
 	Super::BeginPlay();
+
+	AChunk::Blocks = Blocks;
+	AChunk::FWorker = FWorker;
+	AChunk::SpawnedChunksMap = SpawnedChunksMap;
 
 	//Attach gun mesh component to Skeleton, doing it here because the skeleton is not yet created in the constructor
 	FP_Gun->AttachToComponent(Mesh1P, FAttachmentTransformRules(EAttachmentRule::SnapToTarget, true), TEXT("GripPoint"));
@@ -110,8 +115,7 @@ void AMinecraftCharacter::BeginPlay()
 //////////////////////////////////////////////////////////////////////////
 // Input
 
-void AMinecraftCharacter::SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent)
-{
+void AMinecraftCharacter::SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) {
 	// set up gameplay key bindings
 	check(PlayerInputComponent);
 
@@ -120,7 +124,6 @@ void AMinecraftCharacter::SetupPlayerInputComponent(class UInputComponent* Playe
 	PlayerInputComponent->BindAction("Jump", IE_Released, this, &ACharacter::StopJumping);
 
 	PlayerInputComponent->BindAction("Place", IE_Pressed, this, &AMinecraftCharacter::Place);
-
 	PlayerInputComponent->BindAction("Throw", IE_Pressed, this, &AMinecraftCharacter::Throw);
 
 	PlayerInputComponent->BindAction("InventoryUp", IE_Pressed, this, &AMinecraftCharacter::MoveUpInventorySlot);
@@ -148,13 +151,11 @@ void AMinecraftCharacter::SetupPlayerInputComponent(class UInputComponent* Playe
 	PlayerInputComponent->BindAxis("LookUpRate", this, &AMinecraftCharacter::LookUpAtRate);
 }
 
-void AMinecraftCharacter::OnResetVR()
-{
+void AMinecraftCharacter::OnResetVR() {
 	UHeadMountedDisplayFunctionLibrary::ResetOrientationAndPosition();
 }
 
-void AMinecraftCharacter::BeginTouch(const ETouchIndex::Type FingerIndex, const FVector Location)
-{
+void AMinecraftCharacter::BeginTouch(const ETouchIndex::Type FingerIndex, const FVector Location) {
 	if (TouchItem.bIsPressed == true)
 	{
 		return;
@@ -169,8 +170,7 @@ void AMinecraftCharacter::BeginTouch(const ETouchIndex::Type FingerIndex, const 
 	TouchItem.bMoved = false;
 }
 
-void AMinecraftCharacter::EndTouch(const ETouchIndex::Type FingerIndex, const FVector Location)
-{
+void AMinecraftCharacter::EndTouch(const ETouchIndex::Type FingerIndex, const FVector Location) {
 	if (TouchItem.bIsPressed == false)
 	{
 		return;
@@ -216,8 +216,7 @@ void AMinecraftCharacter::EndTouch(const ETouchIndex::Type FingerIndex, const FV
 //	}
 //}
 
-void AMinecraftCharacter::MoveForward(float Value)
-{
+void AMinecraftCharacter::MoveForward(float Value) {
 	if (Value != 0.0f)
 	{
 		// add movement in that direction
@@ -225,8 +224,7 @@ void AMinecraftCharacter::MoveForward(float Value)
 	}
 }
 
-void AMinecraftCharacter::MoveRight(float Value)
-{
+void AMinecraftCharacter::MoveRight(float Value) {
 	if (Value != 0.0f)
 	{
 		// add movement in that direction
@@ -234,22 +232,18 @@ void AMinecraftCharacter::MoveRight(float Value)
 	}
 }
 
-void AMinecraftCharacter::TurnAtRate(float Rate)
-{
+void AMinecraftCharacter::TurnAtRate(float Rate) {
 	// calculate delta for this frame from the rate information
 	AddControllerYawInput(Rate * BaseTurnRate * GetWorld()->GetDeltaSeconds());
 }
 
-void AMinecraftCharacter::LookUpAtRate(float Rate)
-{
+void AMinecraftCharacter::LookUpAtRate(float Rate) {
 	// calculate delta for this frame from the rate information
 	AddControllerPitchInput(Rate * BaseLookUpRate * GetWorld()->GetDeltaSeconds());
 }
 
-bool AMinecraftCharacter::EnableTouchscreenMovement(class UInputComponent* PlayerInputComponent)
-{
-	if (FPlatformMisc::SupportsTouchInput() || GetDefault<UInputSettings>()->bUseMouseForTouch)
-	{
+bool AMinecraftCharacter::EnableTouchscreenMovement(class UInputComponent* PlayerInputComponent) {
+	if (FPlatformMisc::SupportsTouchInput() || GetDefault<UInputSettings>()->bUseMouseForTouch) {
 		PlayerInputComponent->BindTouch(EInputEvent::IE_Pressed, this, &AMinecraftCharacter::BeginTouch);
 		PlayerInputComponent->BindTouch(EInputEvent::IE_Released, this, &AMinecraftCharacter::EndTouch);
 
@@ -262,15 +256,14 @@ bool AMinecraftCharacter::EnableTouchscreenMovement(class UInputComponent* Playe
 }
 
 void AMinecraftCharacter::DestroyChunksOutsideRenderRange() {
-	FVector PlayerLocation = FirstPersonCameraComponent->GetComponentLocation();
+	const FVector PlayerLocation = FirstPersonCameraComponent->GetComponentLocation();
 
 	for (int g = 0; g < VisibleChunks.Num(); g++) {
-		FVector CurrentChunkLoc = VisibleChunks[g]->GetActorLocation();
-		float Distance = FVector::Dist(FVector(PlayerLocation.X, PlayerLocation.Y, 0), CurrentChunkLoc);
+		FVector CurrentChunkLoc = VisibleChunks[g].Chunk->GetActorLocation();
+		const float Distance = FVector::Dist(FVector(PlayerLocation.X, PlayerLocation.Y, 0), CurrentChunkLoc);
 
 		if ( Distance > RENDER_RANGE_TILES * AChunk::CHUNK_SIZE_XY ) {
-			// VisibleChunks[g]->Destroy();
-			AChunk* SpawnedChunk = SpawnedChunksMap[CurrentChunkLoc.ToString()];
+			AChunk* SpawnedChunk = SpawnedChunksMap->operator[](CurrentChunkLoc.ToString());
 			if (SpawnedChunk) {
 				SpawnedChunk->SetVisibility(false);
 			} 
@@ -281,43 +274,60 @@ void AMinecraftCharacter::DestroyChunksOutsideRenderRange() {
 	}
 }
 
+// bool IsChunksUpdated = false;
+
 void AMinecraftCharacter::SpawnNewChunks() {
-	FVector PlayerLocation = FirstPersonCameraComponent->GetComponentLocation();
+	const FVector PlayerLocation = FirstPersonCameraComponent->GetComponentLocation();
+
+	// set static variables
+	// bool IsChunksUpdated = false;
+	// TArray<ChunkEntry> UpdatedChunks;
+	//	AChunk::
 
 	for (int i = RENDER_RANGE_TILES * -1; i < RENDER_RANGE_TILES; i++) {
 		for (int j = RENDER_RANGE_TILES * -1; j < RENDER_RANGE_TILES; j++) {
 			FVector ChunkLoc = FVector((i + LastPlayerChunkCoord.X) * AChunk::CHUNK_SIZE_XY, ( j + LastPlayerChunkCoord.Y) * AChunk::CHUNK_SIZE_XY, 0);
 			FRotator Rotation(0.0f, 0.0f, 0.0f);		
 
-			bool IsFound = SpawnedChunksMap.Contains(ChunkLoc.ToString());	
+			const bool IsFound = SpawnedChunksMap->Contains(ChunkLoc.ToString());	
 
-			float Distance = FVector::Dist(FVector(PlayerLocation.X, PlayerLocation.Y, 0), ChunkLoc);
+			const float Distance = FVector::Dist(FVector(PlayerLocation.X, PlayerLocation.Y, 0), ChunkLoc);
 
 			// FString toString = FString::Printf(TEXT("VectorSize=%d"), ChunkLoc.Size());
 			// GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, toString);
 
-			bool IsInRange = Distance <= RENDER_RANGE_TILES * AChunk::CHUNK_SIZE_XY;
+			const bool IsInRange = Distance <= RENDER_RANGE_TILES * AChunk::CHUNK_SIZE_XY;
 
 			if (IsFound && IsInRange) {
-				SpawnedChunksMap[ChunkLoc.ToString()]->SetVisibility(true);
+				SpawnedChunksMap->operator[](ChunkLoc.ToString())->SetVisibility(true);
 			} 
 
-			bool IsReadyToAddNewChunk = !IsFound && IsInRange;
+			const bool IsReadyToAddNewChunk = !IsFound && IsInRange;
 
 			if (IsReadyToAddNewChunk) {
+				// IsChunksUpdated = true;
+				ChunkEntry CEntry;
+
 				AChunk* NewChunk = GetWorld()->SpawnActor<AChunk>(FVector(ChunkLoc.X, ChunkLoc.Y, 0),  Rotation);
-				VisibleChunks.Add(NewChunk);
-				SpawnedChunksMap.Add(ChunkLoc.ToString(), NewChunk);
+
+				// NewChunk->GenerateChunkBlock(Blocks);
+
+				CEntry.Chunk = NewChunk;
+				CEntry.ChunkLoc = ChunkLoc;
+				
+				VisibleChunks.Add(CEntry);
+				// UpdatedChunks.Add(CEntry);
+				SpawnedChunksMap->Add(ChunkLoc.ToString(), NewChunk);
 			}
 		}
 	}
 }
 
-FIntVector AMinecraftCharacter::GetPlayerChunkCoordinates() {
-	FVector Location = FirstPersonCameraComponent->GetComponentLocation();
+FIntVector AMinecraftCharacter::GetPlayerChunkCoordinates() const {
+	const FVector Location = FirstPersonCameraComponent->GetComponentLocation();
 
-	int X = FMath::RoundToInt(Location.X / AChunk::CHUNK_SIZE_XY);
-	int Y = FMath::RoundToInt(Location.Y / AChunk::CHUNK_SIZE_XY);
+	const int X = FMath::RoundToInt(Location.X / AChunk::CHUNK_SIZE_XY);
+	const int Y = FMath::RoundToInt(Location.Y / AChunk::CHUNK_SIZE_XY);
 
 	return FIntVector(X, Y, 0);
 }
@@ -329,7 +339,7 @@ void AMinecraftCharacter::Tick(float DeltaTime) {
 
 	DestroyChunksOutsideRenderRange();
 
-	FIntVector CurrentChunkCoord = GetPlayerChunkCoordinates();
+	const FIntVector CurrentChunkCoord = GetPlayerChunkCoordinates();
 
 	if (CurrentChunkCoord.X == LastPlayerChunkCoord.X && CurrentChunkCoord.Y == LastPlayerChunkCoord.Y) {
 		return;
@@ -343,7 +353,7 @@ void AMinecraftCharacter::Tick(float DeltaTime) {
 }
 
 void AMinecraftCharacter::CheckForBlocks() {
-	FHitResult LinetraceHit;
+	FHitResult TraceHit;
 	FVector StartTrace = FirstPersonCameraComponent->GetComponentLocation();
 	FVector EndTrace = (FirstPersonCameraComponent->GetForwardVector() * Reach ) + StartTrace;
 
@@ -351,18 +361,18 @@ void AMinecraftCharacter::CheckForBlocks() {
 
 	CQP.AddIgnoredActor(this);
 
-	GetWorld()->LineTraceSingleByChannel(LinetraceHit, StartTrace, EndTrace, ECollisionChannel::ECC_WorldDynamic, CQP);
-	AChunk* Chunk = Cast<AChunk>(LinetraceHit.GetActor());
+	GetWorld()->LineTraceSingleByChannel(TraceHit, StartTrace, EndTrace, ECollisionChannel::ECC_WorldDynamic, CQP);
+	AChunk* Chunk = Cast<AChunk>(TraceHit.GetActor());
 
 	if (Chunk != nullptr) {
 		CurrentChunk = Chunk;
-		HitLocation = LinetraceHit.Location;
+		HitLocation = TraceHit.Location;
 	} else {
-		CurrentChunk = NULL;
+		CurrentChunk = nullptr;
 	}
 }
 
-void AMinecraftCharacter::PlayHitAnim() {
+void AMinecraftCharacter::PlayHitAnim() const {
 	// try and play a firing animation if specified
 	if (FireAnimation != nullptr)
 	{
@@ -383,7 +393,7 @@ void AMinecraftCharacter::OnHit() {
 
 		bIsBreaking = true;
 
-		float TimeBetweenBreaks = (( 20.f ) / 100.f) / 2; // (( CurrentBlock->Resistance ) / 100.f) / 2;
+		constexpr float TimeBetweenBreaks = (( 20.f ) / 100.f) / 2; // (( CurrentBlock->Resistance ) / 100.f) / 2;
 
 		GetWorld()->GetTimerManager().SetTimer(BlockBreakingHandle, this, &AMinecraftCharacter::BreakBlock, TimeBetweenBreaks, true);
 		GetWorld()->GetTimerManager().SetTimer(HitAnimHandle, this, &AMinecraftCharacter::PlayHitAnim, 0.4, true);
@@ -401,13 +411,13 @@ void AMinecraftCharacter::EndHit() {
 	}
 }
 
-void AMinecraftCharacter::BreakBlock() {
+void AMinecraftCharacter::BreakBlock() const {
 	if (bIsBreaking && CurrentChunk != nullptr) {
 		CurrentChunk->Break();
 	}
 }
 
-int32 AMinecraftCharacter::GetCurrentInventorySlot() {
+int32 AMinecraftCharacter::GetCurrentInventorySlot() const {
 	return CurrentInventorySlot;
 }
 
@@ -437,7 +447,7 @@ bool AMinecraftCharacter::AddItemToInventory(AWieldable* Item) {
 }
 
 int32 AMinecraftCharacter::GetCurrentInventoryCounter(uint8 Slot) {
-	if (Inventory[Slot] != NULL) {
+	if (Inventory[Slot] != nullptr) {
 		return Inventory[Slot]->Counter;
 	}
 
@@ -445,7 +455,7 @@ int32 AMinecraftCharacter::GetCurrentInventoryCounter(uint8 Slot) {
 }
 
 UTexture2D* AMinecraftCharacter::GetThumbnailAtInventorySlot(uint8 Slot) {
-	if (Inventory[Slot] != NULL) {
+	if (Inventory[Slot] != nullptr) {
 		return Inventory[Slot]->PickupThumbnail;
 	}
 
@@ -469,23 +479,23 @@ void AMinecraftCharacter::MoveDownInventorySlot() {
 }
 
 void AMinecraftCharacter::UpdateWieldedItem() {
-	if (GetCurrentWieldedItem() != NULL) {
+	if (GetCurrentWieldedItem() != nullptr) {
  		FP_Gun->SetSkeletalMesh(GetCurrentWieldedItem()->WieldableMesh->SkeletalMesh);
 	} else {
-		FP_Gun->SetSkeletalMesh(NULL);
+		FP_Gun->SetSkeletalMesh(nullptr);
 	}
 }
 
 AWieldable* AMinecraftCharacter::GetCurrentWieldedItem() {
-	if (Inventory[CurrentInventorySlot] != NULL) {
+	if (Inventory[CurrentInventorySlot] != nullptr) {
 		return Inventory[CurrentInventorySlot];
 	}
 
-	return NULL;
+	return nullptr;
 }
 
 void AMinecraftCharacter::Place() {
-	AWieldable* CurrentItem = GetCurrentWieldedItem();
+	const AWieldable* CurrentItem = GetCurrentWieldedItem();
 
 	if (CurrentItem == nullptr || CurrentChunk == nullptr || CurrentItem->ToolType != ETool::Block) {
 		return;
@@ -500,28 +510,28 @@ void AMinecraftCharacter::Throw() {
 
 	AWieldable* ItemToThrow = GetCurrentWieldedItem();
 
-	FHitResult LinetraceHit;
+	FHitResult TraceHit;
 
 	FVector StartTrace = FirstPersonCameraComponent->GetComponentLocation();
 	FVector EndTrace = (FirstPersonCameraComponent->GetForwardVector() * Reach ) + StartTrace;
 
-	FCollisionQueryParams CQP;
-	CQP.AddIgnoredActor(this);
+	FCollisionQueryParams Cqp;
+	Cqp.AddIgnoredActor(this);
 
-	GetWorld()->LineTraceSingleByChannel(LinetraceHit, StartTrace, EndTrace, ECollisionChannel::ECC_WorldDynamic, CQP);
+	GetWorld()->LineTraceSingleByChannel(TraceHit, StartTrace, EndTrace, ECollisionChannel::ECC_WorldDynamic, Cqp);
 
 	FVector DropLocation = EndTrace;
 
-	if (LinetraceHit.GetActor() != NULL) {
-		DropLocation = (LinetraceHit.ImpactPoint + 20.f);
+	if (TraceHit.GetActor() != nullptr) {
+		DropLocation = (TraceHit.ImpactPoint + 20.f);
 	}
 
-	if (ItemToThrow != NULL) {
+	if (ItemToThrow != nullptr) {
 		UWorld* const World = GetWorld();
-		if (World != NULL) {
+		if (World != nullptr) {
 			ItemToThrow->SetActorLocationAndRotation(DropLocation, FRotator::ZeroRotator);
 			ItemToThrow->Hide(false);
-			Inventory[CurrentInventorySlot] = NULL;
+			Inventory[CurrentInventorySlot] = nullptr;
 		}
 	}
 
