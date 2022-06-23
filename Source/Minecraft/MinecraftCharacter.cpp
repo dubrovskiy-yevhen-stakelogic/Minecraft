@@ -13,10 +13,12 @@
 
 DEFINE_LOG_CATEGORY_STATIC(LogFPChar, Warning, All);
 
-//////////////////////////////////////////////////////////////////////////
-// AMinecraftCharacter
-
 AMinecraftCharacter::AMinecraftCharacter() {
+	AssetsManager = CreateDefaultSubobject<AAssetsManager>("AssetsManager");
+
+	AChunk::AssetsManager = AssetsManager;
+	ABlock::AssetsManager = AssetsManager;
+	
 	FWorker = new FTerrainGeneratorWorker();
 	// Set size for collision capsule
 	GetCapsuleComponent()->InitCapsuleSize(55.f, 96.0f);
@@ -89,6 +91,27 @@ AMinecraftCharacter::AMinecraftCharacter() {
 }
 
 void AMinecraftCharacter::BeginPlay() {
+	AChunk::BPTorchClass = BPTorchClass;
+	
+	for (int i = 0; i < NUM_OF_INVENTORY_SLOTS; i++) {
+		Inventory.Add(nullptr);
+	}
+
+	AWieldable* SpawnedTorch = GetWorld()->SpawnActor<AWieldable>();
+	SpawnedTorch->ToolType = ETool::Torch;
+	SpawnedTorch->MaterialType = EMaterial::TorchMat;
+	SpawnedTorch->Counter = 10;
+	SpawnedTorch->PickupThumbnail = AssetsManager->GetThumbnailByMaterial(EMaterial::TorchMat);
+	SpawnedTorch->Hide(true);
+	
+	AddItemToInventory(SpawnedTorch);
+	
+	// AddItemToInventory(SpawnedBox);
+	// AddItemToInventory(SpawnedBox);
+	// AddItemToInventory(SpawnedBox);
+	// AddItemToInventory(SpawnedBox);
+	// AddItemToInventory(SpawnedBox);
+	
 	// Call the base class  
 	Super::BeginPlay();
 
@@ -274,15 +297,8 @@ void AMinecraftCharacter::DestroyChunksOutsideRenderRange() {
 	}
 }
 
-// bool IsChunksUpdated = false;
-
 void AMinecraftCharacter::SpawnNewChunks() {
 	const FVector PlayerLocation = FirstPersonCameraComponent->GetComponentLocation();
-
-	// set static variables
-	// bool IsChunksUpdated = false;
-	// TArray<ChunkEntry> UpdatedChunks;
-	//	AChunk::
 
 	for (int i = RENDER_RANGE_TILES * -1; i < RENDER_RANGE_TILES; i++) {
 		for (int j = RENDER_RANGE_TILES * -1; j < RENDER_RANGE_TILES; j++) {
@@ -305,18 +321,14 @@ void AMinecraftCharacter::SpawnNewChunks() {
 			const bool IsReadyToAddNewChunk = !IsFound && IsInRange;
 
 			if (IsReadyToAddNewChunk) {
-				// IsChunksUpdated = true;
 				ChunkEntry CEntry;
 
 				AChunk* NewChunk = GetWorld()->SpawnActor<AChunk>(FVector(ChunkLoc.X, ChunkLoc.Y, 0),  Rotation);
-
-				// NewChunk->GenerateChunkBlock(Blocks);
 
 				CEntry.Chunk = NewChunk;
 				CEntry.ChunkLoc = ChunkLoc;
 				
 				VisibleChunks.Add(CEntry);
-				// UpdatedChunks.Add(CEntry);
 				SpawnedChunksMap->Add(ChunkLoc.ToString(), NewChunk);
 			}
 		}
@@ -426,7 +438,7 @@ bool AMinecraftCharacter::AddItemToInventory(AWieldable* Item) {
 		return false;
 	}
 
-	if (Item->ToolType == ETool::Block) {
+	if (Item->ToolType == ETool::Block || Item->ToolType == ETool::Torch) {
 		for (int i = 0; i < Inventory.Num(); i++) {
 			if (Inventory[i] != nullptr && Inventory[i]->MaterialType == Item->MaterialType) {
 				++Inventory[i]->Counter;
@@ -480,9 +492,9 @@ void AMinecraftCharacter::MoveDownInventorySlot() {
 
 void AMinecraftCharacter::UpdateWieldedItem() {
 	if (GetCurrentWieldedItem() != nullptr) {
- 		FP_Gun->SetSkeletalMesh(GetCurrentWieldedItem()->WieldableMesh->SkeletalMesh);
+ 		// FP_Gun->SetSkeletalMesh(GetCurrentWieldedItem()->WieldableMesh->SkeletalMesh);
 	} else {
-		FP_Gun->SetSkeletalMesh(nullptr);
+		// FP_Gun->SetSkeletalMesh(nullptr);
 	}
 }
 
@@ -497,7 +509,7 @@ AWieldable* AMinecraftCharacter::GetCurrentWieldedItem() {
 void AMinecraftCharacter::Place() {
 	const AWieldable* CurrentItem = GetCurrentWieldedItem();
 
-	if (CurrentItem == nullptr || CurrentChunk == nullptr || CurrentItem->ToolType != ETool::Block) {
+	if (CurrentItem == nullptr || CurrentChunk == nullptr) {
 		return;
 	}
 

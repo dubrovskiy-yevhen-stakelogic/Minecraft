@@ -46,7 +46,6 @@ public:
 	void Place(UMaterialInterface* Material, FVector Location);
 
 	void SetChunk(AActor*);
-
-	UPROPERTY()
-	AAssetsManager* AssetsManager;
+	
+	static AAssetsManager* AssetsManager;
 };

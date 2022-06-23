@@ -159,6 +159,9 @@ protected:
 	bool EnableTouchscreenMovement(UInputComponent* InputComponent);
 
 private:
+	UPROPERTY()
+	AAssetsManager *AssetsManager;
+	
 	FTerrainGeneratorWorker* FWorker;
 
 	// void RenderVisibleChunks(TArray<ChunkEntry> VisibleChunks);
@@ -213,6 +216,9 @@ private:
 
 	TArray<ChunkEntry> VisibleChunks;
 	TMap<FString, AChunk*>* SpawnedChunksMap;
+
+	UPROPERTY(EditAnywhere)
+	TSubclassOf<class AActor> BPTorchClass;
 public:
 	/** Returns Mesh1P subobject **/
 	USkeletalMeshComponent* GetMesh1P() const { return Mesh1P; }

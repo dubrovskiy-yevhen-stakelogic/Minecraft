@@ -5,10 +5,11 @@
 // #include "PickupBox.h"
 #include "Wieldable.h"
 
+AAssetsManager* ABlock::AssetsManager;
+
 // Sets default values
 ABlock::ABlock() {
 	PrimaryActorTick.bCanEverTick = false;
-	AssetsManager = CreateDefaultSubobject<AAssetsManager>("AssetsManager");
 	Resistance = 20.f;
 	BreakingStage = 0.f;
 	AssetsManager->AttachToComponent(this->RootComponent, FAttachmentTransformRules::KeepRelativeTransform);
@@ -50,9 +51,8 @@ void ABlock::Break() {
 
 		AWieldable* SpawnedBox = GetWorld()->SpawnActor<AWieldable>(Location,  Rotation);
 
-		SpawnedBox->WieldableMesh->SetSkeletalMesh(AssetsManager->SkeletalMeshAsset);
+		SpawnedBox->WieldableMesh->SetSkeletalMesh(AssetsManager->SkeletalBlock);
 		SpawnedBox->WieldableMesh->SetMaterial(0, SM_Block->GetMaterial(0));
-		SpawnedBox->WieldableMesh->SetWorldScale3D(FVector(0.3, 0.3, 0.3));
 		SpawnedBox->PickupThumbnail = AssetsManager->GetThumbnailByMaterial(SM_Block->GetMaterial(0)->GetMaterial());
 
 		SpawnedBox->ToolType = ETool::Block;

@@ -34,13 +34,9 @@ void AWieldable::BeginPlay() {
 void AWieldable::Tick(float DeltaTime) {
 	Super::Tick(DeltaTime);
 
-	const FVector GravityAcc = FVector(0.f, 0.f, -1.f) * 5.f;
-
-	WieldableMesh->AddImpulse(GravityAcc);
-
-	FRotator rotation = WieldableMesh->GetComponentRotation();
-	rotation.Yaw += 1.f;
-	WieldableMesh->SetRelativeRotation(rotation);
+	FRotator Rotation = WieldableMesh->GetComponentRotation();
+	Rotation.Yaw += 1.f;
+	WieldableMesh->SetRelativeRotation(Rotation);
 }
 
 void AWieldable::OnOverlap(UPrimitiveComponent*, class AActor* OtherActor, UPrimitiveComponent*, int32, bool, const FHitResult&) {
@@ -48,9 +44,7 @@ void AWieldable::OnOverlap(UPrimitiveComponent*, class AActor* OtherActor, UPrim
 		AMinecraftCharacter* Character = Cast<AMinecraftCharacter>(UGameplayStatics::GetPlayerCharacter(this, 0));
 		Character->FP_Gun->SetSkeletalMesh(WieldableMesh->SkeletalMesh);
 		Character->AddItemToInventory(this);
-
-		Destroy();
-		// Hide(true);
+		Hide(true);
 	}
 }
 
@@ -60,5 +54,5 @@ void AWieldable::Hide(bool bVis) {
 }
 
 void AWieldable::OnUsed() {
-	Destroy();
+	// Destroy();
 }

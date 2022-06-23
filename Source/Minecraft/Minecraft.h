@@ -16,7 +16,9 @@ enum EMaterial {
 	Iron,
 	Snow,
 	Diamond,
-	Golden
+	Golden,
+	TorchMat,
+	DiamondPickaxe
 };
 
 UENUM()
@@ -26,7 +28,8 @@ enum ETool {
 	Axe,
 	Shovel,
 	Sword,
-	Block
+	Block,
+	Torch
 };
 
 struct BlockInfo {

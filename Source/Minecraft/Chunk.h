@@ -23,9 +23,13 @@ protected:
 	virtual void BeginPlay() override;
 
 public:
+	static AAssetsManager* AssetsManager;
 	static TMap<FString, BlockInfo> *Blocks;
 	static FTerrainGeneratorWorker* FWorker;
 	static TMap<FString, AChunk*> *SpawnedChunksMap;
+
+	static TSubclassOf<class AActor> BPTorchClass;
+	
 	static const int CHUNK_SIZE_XY = 1600;
 
 	void FindBlock(FVector_NetQuantize);
@@ -45,9 +49,6 @@ private:
 	int NUM = 16;
 	int DEPTH = 256;
 	float VOXEL_SIZE = 100;
-
-	UPROPERTY()
-	AAssetsManager* AssetsManager;
 
 	FVector BrakeLocation;
 	int BrakeInstanceInd;

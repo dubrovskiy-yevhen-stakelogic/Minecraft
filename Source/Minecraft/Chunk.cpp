@@ -3,10 +3,13 @@
 
 #include "Chunk.h"
 #include "TreeGenerator.h"
+#include "Torch.h"
 
+AAssetsManager* AChunk::AssetsManager;
 TMap<FString, BlockInfo> * AChunk::Blocks;
 FTerrainGeneratorWorker* AChunk::FWorker;
 TMap<FString, AChunk*> * AChunk::SpawnedChunksMap;
+TSubclassOf<class AActor> AChunk::BPTorchClass;
 
 // Sets default values
 AChunk::AChunk() {
@@ -21,7 +24,6 @@ AChunk::AChunk() {
 
 	RootComponent = CreateDefaultSubobject<USceneComponent>("SceneComponent");
 	BreakingBlock = CreateDefaultSubobject<ABlock>("Breaking block");
-	AssetsManager = CreateDefaultSubobject<AAssetsManager>("AssetsManager");
 
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> UnitBlockAsset(TEXT("StaticMesh'/Game/Assets/Meshes/Blocks/SM_UnitBlock.SM_UnitBlock'"));	
 
@@ -38,11 +40,9 @@ AChunk::AChunk() {
 	for (int i = 0; i < AssetsLength; i++) {
 		Instances.Add(CreateDefaultSubobject<UInstancedStaticMeshComponent>(AssetsManager->ConvertMaterialTypeToString(MaterialTypes[i])));
 		Instances[i]->SetStaticMesh(UnitBlockAsset.Object);
-		Instances[i]->SetMaterial(0, AssetsManager->GetMaterialByType(MaterialTypes[i]));
 		Instances[i]->AttachToComponent(this->RootComponent, FAttachmentTransformRules::KeepRelativeTransform);
 	}
-
-	AssetsManager->AttachToComponent(this->RootComponent, FAttachmentTransformRules::KeepRelativeTransform);
+	
 	BreakingBlock->AttachToComponent(this->RootComponent, FAttachmentTransformRules::KeepRelativeTransform);
 	BreakingBlockMesh->AttachToComponent(this->RootComponent, FAttachmentTransformRules::KeepRelativeTransform);
 }
@@ -51,6 +51,13 @@ AChunk::AChunk() {
 // Called when the game starts or when spawned
 void AChunk::BeginPlay() {
 	Super::BeginPlay();
+
+	constexpr  EMaterial MaterialTypes[6] = {  EMaterial::Snow,  EMaterial::Grass,  EMaterial::Iron,  EMaterial::Cobble, EMaterial::WoodOak, EMaterial::Leaves };
+	constexpr  int AssetsLength = sizeof MaterialTypes / sizeof MaterialTypes[0];
+
+	for (int i = 0; i < AssetsLength; i++) {
+		Instances[i]->SetMaterial(0, AssetsManager->GetMaterialByType(MaterialTypes[i]));
+	}
 
 	// MUCH OPTIMIZED
 	const FVector Location = GetActorLocation();
@@ -112,6 +119,33 @@ void AChunk::PlaceBlock(FVector HitLocation, TEnumAsByte<EMaterial> MaterialType
 			} else if (MeshLocation.Z == HitLocation.Z - VOXEL_SIZE) {
 				PlaceLocation += FVector(0, 0, VOXEL_SIZE);
 			} else {
+				return;
+			}
+
+			GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, AssetsManager->ConvertMaterialTypeToString((MaterialType)).ToString());
+
+			if (MaterialType == EMaterial::TorchMat) {
+				
+				// const AActor* TorchClass = Cast<AActor>(AAssetsManager::BPTorch->GetClass());
+				
+				GetWorld()->SpawnActor<AActor>(BPTorchClass, PlaceLocation + Location + FVector(0, 0, -VOXEL_SIZE / 2), FRotator(0, 0, 0));
+
+				/*
+					SpawnedPickaxe->WieldableMesh->SetSkeletalMesh(AssetsManager->SkeletalPickaxe);
+					SpawnedPickaxe->WieldableMesh->SetMaterial(0, AssetsManager->GetMaterialByType((EMaterial::DiamondPickaxe)));
+					SpawnedPickaxe->PickupThumbnail = AssetsManager->GetThumbnailByMaterial(AssetsManager->GetMaterialByType((EMaterial::DiamondPickaxe)));
+					SpawnedPickaxe->ToolType = ETool::Pickaxe;
+					SpawnedPickaxe->MaterialType = EMaterial::DiamondPickaxe; 
+
+				SpawnedTorch->WieldableMesh->SetSkeletalMesh(AssetsManager->SkeletalTorch);
+				SpawnedTorch->WieldableMesh->SetMaterial(0, AssetsManager->GetMaterialByType((EMaterial::TorchMat)));
+				SpawnedTorch->PickupThumbnail = AssetsManager->GetThumbnailByMaterial(AssetsManager->GetMaterialByType((EMaterial::TorchMat)));
+				SpawnedTorch->ToolType = ETool::Torch;
+				SpawnedTorch->MaterialType = EMaterial::TorchMat;
+				*/
+
+				GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, "PICKAXE SPAWNED");
+				
 				return;
 			}
 

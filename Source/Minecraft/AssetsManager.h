@@ -21,18 +21,20 @@ class MINECRAFT_API AAssetsManager : public AActor
 public:	
 	// Sets default values for this actor's properties
 	AAssetsManager();
+	
+	static USkeletalMesh* SkeletalBlock;
+	static USkeletalMesh* SkeletalTorch;
+	static USkeletalMesh* SkeletalPickaxe;
+	static UStaticMesh* StaticTorch;
+	static UBlueprint* BPTorch;
 
+	static TArray<MaterialItem> Materials;
 
-	UPROPERTY()
-	USkeletalMesh* SkeletalMeshAsset;
-
-	TArray<MaterialItem> Materials;
-
-	TEnumAsByte<EMaterial> GetTypeByMaterial(const UMaterial*);
-	UMaterial* GetMaterialByType(TEnumAsByte<EMaterial>);
+	static TEnumAsByte<EMaterial> GetTypeByMaterial(const UMaterial*);
+	static UMaterial* GetMaterialByType(const TEnumAsByte<EMaterial>);
 	static FName ConvertMaterialTypeToString(TEnumAsByte<EMaterial>);
-
-	UTexture2D* GetThumbnailByMaterial(const UMaterial*);
+	static UTexture2D* GetThumbnailByMaterial(const UMaterial*);
+	static UTexture2D* GetThumbnailByMaterial(const TEnumAsByte<EMaterial>);
 	
 protected:
 	// Called when the game starts or when spawned
